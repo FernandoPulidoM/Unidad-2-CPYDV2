@@ -21,5 +21,8 @@ std::string_view TeamDelegate::SaveTeam(const domain::Team& team){
 
     return teamRepository->Create(team);
 }
+//delete
 
-
+void TeamDelegate::DeleteTeam(std::string_view id) {
+    teamRepository->Delete(id.data());
+}

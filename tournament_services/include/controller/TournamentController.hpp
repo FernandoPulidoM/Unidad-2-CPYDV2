@@ -17,6 +17,9 @@ public:
     explicit TournamentController(std::shared_ptr<ITournamentDelegate> tournament);
     [[nodiscard]] crow::response CreateTournament(const crow::request &request) const;
     [[nodiscard]] crow::response ReadAll() const;
+
+    // Agregar en la clase TournamentController:
+    [[nodiscard]] crow::response DeleteTournament(const std::string& id) const;
 };
 
 

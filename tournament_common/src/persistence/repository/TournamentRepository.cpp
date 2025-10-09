@@ -50,10 +50,27 @@ std::string TournamentRepository::Update (const domain::Tournament & entity) {
     return "id";
 }
 
+// void TournamentRepository::Delete(std::string id) {
+//
+// }
+
+// Al final del archivo, agrega:
 void TournamentRepository::Delete(std::string id) {
+    auto pooled = connectionProvider->Connection();
+    const auto connection = dynamic_cast<PostgresConnection*>(&*pooled);
+    pqxx::work tx(*(connection->connection));
 
+    pqxx::result r = tx.exec_params(
+        "DELETE FROM tournaments WHERE id = $1::uuid;",
+        id
+    );
+
+    tx.commit();
+
+    if (r.affected_rows() == 0) {
+        throw std::runtime_error("Tournament not found");
+    }
 }
-
 std::vector<std::shared_ptr<domain::Tournament>> TournamentRepository::ReadAll() {
     std::vector<std::shared_ptr<domain::Tournament>> tournaments;
 

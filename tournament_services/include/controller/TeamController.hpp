@@ -23,6 +23,8 @@ public:
     [[nodiscard]] crow::response getTeam(const std::string& teamId) const;
     [[nodiscard]] crow::response getAllTeams() const;
     [[nodiscard]] crow::response SaveTeam(const crow::request& request) const;
+
+    [[nodiscard]] crow::response DeleteTeam(const std::string& teamId) const;
 };
 
 

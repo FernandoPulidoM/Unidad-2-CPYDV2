@@ -19,6 +19,9 @@ public:
 
     std::string CreateTournament(std::shared_ptr<domain::Tournament> tournament) override;
     std::vector<std::shared_ptr<domain::Tournament>> ReadAll() override;
+
+    // Agregar en la clase TournamentDelegate:
+    void DeleteTournament(const std::string& id) override;
 };
 
 #endif //TOURNAMENTS_TOURNAMENTDELEGATE_HPP

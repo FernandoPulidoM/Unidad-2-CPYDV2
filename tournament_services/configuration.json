@@ -6,9 +6,9 @@
     "databaseConfig" : {
         "provider" : "postgres",
         "poolSize": 2,
-        "connectionString" : "postgresql://tournament_svc:password@tournament_db:5432/tournament_db"
+        "connectionString" : "host=127.0.0.1 port=5432 dbname=tournament_db user=tournament_admin password=password"
     },
     "activemq": {
-        "broker-url" : "failover://(tcp://artemis:61616)"
+        "broker-url" : "failover://(tcp://localhost:61616)"
     }
 }

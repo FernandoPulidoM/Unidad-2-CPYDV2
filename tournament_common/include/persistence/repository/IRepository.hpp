@@ -14,7 +14,13 @@ public:
     virtual std::shared_ptr<Type> ReadById(Id id) = 0;
     virtual Id Create (const Type & entity) = 0;
     virtual Id Update (const Type & entity) = 0;
-    virtual void Delete(Id id) = 0;
+
+    virtual void Delete(Id id) = 0; //viejo que no funciona
+
+    // En la interfaz IRepository (busca este archivo y agrega):
+    //virtual void Delete(const TKey& id) = 0;
+
+
     virtual std::vector<std::shared_ptr<Type>> ReadAll() = 0;
 };
 #endif //RESTAPI_IREPOSITORY_HPP

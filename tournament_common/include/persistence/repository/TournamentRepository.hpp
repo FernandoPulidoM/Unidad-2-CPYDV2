@@ -18,7 +18,7 @@ public:
     std::shared_ptr<domain::Tournament> ReadById(std::string id) override;
     std::string Create (const domain::Tournament & entity) override;
     std::string Update (const domain::Tournament & entity) override;
-    void Delete(std::string id) override;
+    void Delete(std::string id) override;//ya existe
     std::vector<std::shared_ptr<domain::Tournament>> ReadAll() override;
 };
 

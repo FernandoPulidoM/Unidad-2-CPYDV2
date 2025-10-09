@@ -51,6 +51,24 @@ crow::response TeamController::SaveTeam(const crow::request& request) const {
     return response;
 }
 
+crow::response TeamController::DeleteTeam(const std::string& teamId) const {
+    if(!std::regex_match(teamId, ID_VALUE)) {
+        return crow::response{crow::BAD_REQUEST, "Invalid ID format"};
+    }
+
+    try {
+        teamDelegate->DeleteTeam(teamId);
+        return crow::response{crow::NO_CONTENT};
+    } catch (const std::runtime_error& e) {
+        return crow::response{crow::NOT_FOUND, e.what()};
+    } catch (const std::exception& e) {
+        return crow::response{crow::INTERNAL_SERVER_ERROR, e.what()};
+    }
+}
+
 REGISTER_ROUTE(TeamController, getTeam, "/teams/<string>", "GET"_method)
 REGISTER_ROUTE(TeamController, getAllTeams, "/teams", "GET"_method)
 REGISTER_ROUTE(TeamController, SaveTeam, "/teams", "POST"_method)
+
+// Agregar al final con los otros REGISTER_ROUTE:
+REGISTER_ROUTE(TeamController, DeleteTeam, "/teams/<string>", "DELETE"_method)

@@ -29,3 +29,10 @@ std::string TournamentDelegate::CreateTournament(std::shared_ptr<domain::Tournam
 std::vector<std::shared_ptr<domain::Tournament> > TournamentDelegate::ReadAll() {
     return tournamentRepository->ReadAll();
 }
+
+// Agregar al final del archivo:
+void TournamentDelegate::DeleteTournament(const std::string& id) {
+    tournamentRepository->Delete(id);
+    producer->SendMessage(id, "tournament.deleted");
+}
+

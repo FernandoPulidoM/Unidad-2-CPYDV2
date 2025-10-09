@@ -36,6 +36,21 @@ crow::response TournamentController::ReadAll() const {
     return response;
 }
 
+// Agregar antes de los REGISTER_ROUTE:
+crow::response TournamentController::DeleteTournament(const std::string& id) const {
+    try {
+        tournamentDelegate->DeleteTournament(id);
+        return crow::response{crow::NO_CONTENT};
+    } catch (const std::runtime_error& e) {
+        return crow::response{crow::NOT_FOUND, e.what()};
+    } catch (const std::exception& e) {
+        return crow::response{crow::INTERNAL_SERVER_ERROR, e.what()};
+    }
+}
+
 
 REGISTER_ROUTE(TournamentController, CreateTournament, "/tournaments", "POST"_method)
 REGISTER_ROUTE(TournamentController, ReadAll, "/tournaments", "GET"_method)
+
+// Agregar esta línea después de los otros REGISTER_ROUTE:
+REGISTER_ROUTE(TournamentController, DeleteTournament, "/tournaments/<string>", "DELETE"_method)
