@@ -1,4 +1,8 @@
-#pragma once
+///////////////////NO USAR ESTE ESTA RARO
+///
+///
+///
+///#pragma once
 #include <pqxx/pqxx>
 #include <vector>
 #include <string>

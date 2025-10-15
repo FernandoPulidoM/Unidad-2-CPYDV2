@@ -36,3 +36,7 @@ void TournamentDelegate::DeleteTournament(const std::string& id) {
     producer->SendMessage(id, "tournament.deleted");
 }
 
+void TournamentDelegate::UpdateTournament(const std::string& id, std::shared_ptr<domain::Tournament> tournament) {
+    std::string updatedId = tournamentRepository->Update(*tournament);
+    producer->SendMessage(updatedId, "tournament.updated");
+}

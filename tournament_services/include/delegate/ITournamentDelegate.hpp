@@ -16,6 +16,9 @@ public:
     virtual std::string CreateTournament(std::shared_ptr<domain::Tournament> tournament) = 0;
     virtual std::vector<std::shared_ptr<domain::Tournament>> ReadAll() = 0;
 
+    // En la interfaz:
+    virtual void UpdateTournament(const std::string& id, std::shared_ptr<domain::Tournament> tournament) = 0;
+
     // Agregar en la interfaz ITournamentDelegate:
     virtual void DeleteTournament(const std::string& id) = 0;
 };

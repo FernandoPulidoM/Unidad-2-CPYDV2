@@ -46,8 +46,26 @@ std::string TournamentRepository::Create (const domain::Tournament & entity) {
     return result[0]["id"].c_str();
 }
 
-std::string TournamentRepository::Update (const domain::Tournament & entity) {
-    return "id";
+std::string TournamentRepository::Update(const domain::Tournament& entity) {
+    const nlohmann::json tournamentDoc = entity;
+
+    auto pooled = connectionProvider->Connection();
+    const auto connection = dynamic_cast<PostgresConnection*>(&*pooled);
+    pqxx::work tx(*(connection->connection));
+
+    pqxx::result r = tx.exec_params(
+        "UPDATE tournaments SET document = $1 WHERE id = $2::uuid RETURNING id;",
+        tournamentDoc.dump(),
+        tournamentDoc["id"].get<std::string>()
+    );
+
+    tx.commit();
+
+    if (r.empty()) {
+        throw std::runtime_error("Tournament not found");
+    }
+
+    return r[0]["id"].c_str();
 }
 
 // void TournamentRepository::Delete(std::string id) {

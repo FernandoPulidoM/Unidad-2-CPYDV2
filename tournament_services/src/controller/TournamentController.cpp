@@ -48,9 +48,33 @@ crow::response TournamentController::DeleteTournament(const std::string& id) con
     }
 }
 
+crow::response TournamentController::UpdateTournament(const crow::request& request, const std::string& id) const {
+    try {
+        if(!nlohmann::json::accept(request.body)) {
+            return crow::response{crow::BAD_REQUEST, "Invalid JSON"};
+        }
+
+        nlohmann::json body = nlohmann::json::parse(request.body);
+        const std::shared_ptr<domain::Tournament> tournament = std::make_shared<domain::Tournament>(body);
+
+        tournamentDelegate->UpdateTournament(id, tournament);
+
+        crow::response response;
+        response.code = crow::OK;
+        response.add_header(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE);
+        return response;
+    } catch (const std::runtime_error& e) {
+        return crow::response{crow::NOT_FOUND, e.what()};
+    } catch (const std::exception& e) {
+        return crow::response{crow::INTERNAL_SERVER_ERROR, e.what()};
+    }
+}
 
 REGISTER_ROUTE(TournamentController, CreateTournament, "/tournaments", "POST"_method)
 REGISTER_ROUTE(TournamentController, ReadAll, "/tournaments", "GET"_method)
 
 // Agregar esta línea después de los otros REGISTER_ROUTE:
 REGISTER_ROUTE(TournamentController, DeleteTournament, "/tournaments/<string>", "DELETE"_method)
+
+
+REGISTER_ROUTE(TournamentController, UpdateTournament, "/tournaments/<string>", "PUT"_method)
