@@ -47,16 +47,17 @@ std::string TournamentRepository::Create (const domain::Tournament & entity) {
 }
 
 std::string TournamentRepository::Update(const domain::Tournament& entity) {
-    const nlohmann::json tournamentDoc = entity;
-
     auto pooled = connectionProvider->Connection();
     const auto connection = dynamic_cast<PostgresConnection*>(&*pooled);
     pqxx::work tx(*(connection->connection));
 
+    // Usa el id del parámetro de la URL, no del JSON
+    const nlohmann::json tournamentDoc = entity;
+
     pqxx::result r = tx.exec_params(
         "UPDATE tournaments SET document = $1 WHERE id = $2::uuid RETURNING id;",
         tournamentDoc.dump(),
-        tournamentDoc["id"].get<std::string>()
+        entity.Id()  // ← Usa el método Id() de la clase, no el JSON
     );
 
     tx.commit();
@@ -67,7 +68,20 @@ std::string TournamentRepository::Update(const domain::Tournament& entity) {
 
     return r[0]["id"].c_str();
 }
-
+// ```
+//
+// El cambio clave: `SET document = $1` en lugar de `SET name = $1`, y `tournamentDoc.dump()` para guardar el JSON completo.
+//
+// Recompila y prueba:
+// ```
+// PUT http://localhost:8080/tournaments/043b0392-5229-4f7b-9ef6-5388c5e18e2f
+//
+// Body:
+// {
+//     "id": "043b0392-5229-4f7b-9ef6-5388c5e18e2f",
+//     "name": "nombre nuevo",
+//     "format": {"type": "ROUND_ROBIN", "numberOfGroups": 1, "maxTeamsPerGroup": 16}
+// }
 // void TournamentRepository::Delete(std::string id) {
 //
 // }

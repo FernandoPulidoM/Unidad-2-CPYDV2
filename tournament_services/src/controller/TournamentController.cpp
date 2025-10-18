@@ -57,6 +57,9 @@ crow::response TournamentController::UpdateTournament(const crow::request& reque
         nlohmann::json body = nlohmann::json::parse(request.body);
         const std::shared_ptr<domain::Tournament> tournament = std::make_shared<domain::Tournament>(body);
 
+        // ← AGREGA ESTA LÍNEA para asignar el id de la URL
+        tournament->Id() = id;
+
         tournamentDelegate->UpdateTournament(id, tournament);
 
         crow::response response;
@@ -69,6 +72,7 @@ crow::response TournamentController::UpdateTournament(const crow::request& reque
         return crow::response{crow::INTERNAL_SERVER_ERROR, e.what()};
     }
 }
+
 
 REGISTER_ROUTE(TournamentController, CreateTournament, "/tournaments", "POST"_method)
 REGISTER_ROUTE(TournamentController, ReadAll, "/tournaments", "GET"_method)
