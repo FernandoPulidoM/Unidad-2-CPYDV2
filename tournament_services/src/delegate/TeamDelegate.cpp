@@ -1,28 +1,25 @@
-//
-// Created by tomas on 8/22/25.
-//
-
 #include "delegate/TeamDelegate.hpp"
 
-#include <utility>
+TeamDelegate::TeamDelegate(std::shared_ptr<IRepository<domain::Team, std::string>> repository,
+                           std::shared_ptr<QueueMessageProducer> prod)
+    : teamRepository(std::move(repository)), producer(std::move(prod)) {}
 
-TeamDelegate::TeamDelegate(std::shared_ptr<IRepository<domain::Team, std::string_view> > repository) : teamRepository(std::move(repository)) {
+std::string TeamDelegate::CreateTeam(std::shared_ptr<domain::Team> team) {
+    std::string id = teamRepository->Create(*team);
+    producer->SendMessage(id, "team.created");
+    return id;
 }
 
-std::vector<std::shared_ptr<domain::Team>> TeamDelegate::GetAllTeams() {
+std::vector<std::shared_ptr<domain::Team>> TeamDelegate::ReadAll() {
     return teamRepository->ReadAll();
 }
 
-std::shared_ptr<domain::Team> TeamDelegate::GetTeam(std::string_view id) {
-    return teamRepository->ReadById(id.data());
+void TeamDelegate::UpdateTeam(const std::string& id, std::shared_ptr<domain::Team> team) {
+    std::string updatedId = teamRepository->Update(*team);
+    producer->SendMessage(updatedId, "team.updated");
 }
 
-std::string_view TeamDelegate::SaveTeam(const domain::Team& team){
-
-    return teamRepository->Create(team);
-}
-//delete
-
-void TeamDelegate::DeleteTeam(std::string_view id) {
-    teamRepository->Delete(id.data());
+void TeamDelegate::DeleteTeam(const std::string& id) {
+    teamRepository->Delete(id);
+    producer->SendMessage(id, "team.deleted");
 }

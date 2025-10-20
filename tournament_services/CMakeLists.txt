@@ -17,7 +17,7 @@ find_package(Crow CONFIG REQUIRED)
 find_package(libpqxx CONFIG REQUIRED)
 find_path(HYPODERMIC_INCLUDE_DIRS "Hypodermic/ActivatedRegistrationInfo.h")
 find_package(nlohmann_json CONFIG REQUIRED)
-find_package(activemq-cpp CONFIG REQUIRED)
+#find_package(activemq-cpp CONFIG REQUIRED)
 find_package(GTest CONFIG REQUIRED)
 
 include_directories(include)

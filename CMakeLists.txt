@@ -1,8 +1,9 @@
 cmake_minimum_required(VERSION 3.31.6)
 project(Tournaments)
 #
-# Asegúrate de que CMAKE_PREFIX_PATH incluya vcpkg
+# Agrega las rutas de vcpkg
 set(CMAKE_PREFIX_PATH "${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-linux/share" ${CMAKE_PREFIX_PATH})
+include_directories(${CMAKE_SOURCE_DIR}/vcpkg_installed/x64-linux/include)
 
 find_package(GTest REQUIRED CONFIG)
 #
