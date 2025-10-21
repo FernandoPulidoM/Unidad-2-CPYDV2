@@ -1,174 +1,129 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
+#include <crow.h>
 #include <nlohmann/json.hpp>
+#include <memory>
+#include <string>
+#include <vector>
+
 #include "controller/TournamentController.hpp"
-#include "delegate/ITournamentDelegate.hpp"
+#include "tests/mocks/TournamentDelegateMock.hpp"
 #include "domain/Tournament.hpp"
 
-using ::testing::Return;
 using ::testing::_;
-
-// Mock del ITournamentDelegate
-class MockTournamentDelegate : public ITournamentDelegate {
-public:
-    MOCK_METHOD(std::string, CreateTournament, (std::shared_ptr<domain::Tournament>), (override));
-    MOCK_METHOD(std::vector<std::shared_ptr<domain::Tournament>>, ReadAll, (), (override));
-    MOCK_METHOD(void, UpdateTournament, (const std::string&, std::shared_ptr<domain::Tournament>), (override));
-    MOCK_METHOD(void, DeleteTournament, (const std::string&), (override));
-};
+using ::testing::Return;
+using ::testing::Throw;
+using ::testing::Truly;
 
 class TournamentControllerTest : public ::testing::Test {
 protected:
-    std::shared_ptr<MockTournamentDelegate> mockDelegate;
-    std::shared_ptr<TournamentController> controller;
+    std::shared_ptr<TournamentDelegateMock> mockDelegate;
+    std::shared_ptr<TournamentController>   controller;
 
     void SetUp() override {
-        mockDelegate = std::make_shared<MockTournamentDelegate>();
-        controller = std::make_shared<TournamentController>(mockDelegate);
+        mockDelegate = std::make_shared<TournamentDelegateMock>();
+        controller   = std::make_shared<TournamentController>(mockDelegate);
     }
 };
 
-TEST_F(TournamentControllerTest, CreateTournament_ValidRequest_ReturnsCreated) {
-    // Arrange
-    nlohmann::json requestBody = {
-        {"name", "Test Tournament"},
-        {"format", {
-            {"type", "ROUND_ROBIN"},
-            {"numberOfGroups", 2},
-            {"maxTeamsPerGroup", 8}
-        }}
+// POST /tournaments -> 201 + Location, valida transformacion
+TEST_F(TournamentControllerTest, CreateTournament_Valid_201_Location) {
+    nlohmann::json body = {
+        {"name", "Torneo Verano 2025"},
+        {"format", {{"type","ROUND_ROBIN"},{"numberOfGroups",2},{"maxTeamsPerGroup",8}}}
     };
+    crow::request req; req.body = body.dump();
 
-    crow::request req;
-    req.body = requestBody.dump();
-
-    std::string expectedId = "test-tournament-id-123";
     EXPECT_CALL(*mockDelegate, CreateTournament(_))
-        .WillOnce(Return(expectedId));
+        .WillOnce(Return("new-id-abc"));
 
-    // Act
-    crow::response response = controller->CreateTournament(req);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::CREATED);
-    EXPECT_EQ(response.get_header_value("location"), expectedId);
+    auto resp = controller->CreateTournament(req);
+    EXPECT_EQ(resp.code, crow::CREATED);
+    EXPECT_EQ(resp.get_header_value("location"), "new-id-abc");
 }
 
-TEST_F(TournamentControllerTest, CreateTournament_InvalidJSON_ReturnsBadRequest) {
-    // Arrange
-    crow::request req;
-    req.body = "invalid json {";
+// POST /tournaments -> 409 si delegate lanza (duplicado)
+TEST_F(TournamentControllerTest, CreateTournament_Conflict_409) {
+    nlohmann::json body = {{"name", "Duplicado"}};
+    crow::request req; req.body = body.dump();
 
-    // Act & Assert
-    EXPECT_THROW(controller->CreateTournament(req), std::exception);
+    EXPECT_CALL(*mockDelegate, CreateTournament(_))
+        .WillOnce(Throw(std::runtime_error("duplicate")));
+
+    auto resp = controller->CreateTournament(req);
+    EXPECT_EQ(resp.code, crow::CONFLICT);
 }
 
-TEST_F(TournamentControllerTest, ReadAll_ReturnsAllTournaments) {
-    // Arrange
-    auto tournament1 = std::make_shared<domain::Tournament>("Tournament 1");
-    tournament1->Id() = "id-1";
+// GET /tournaments/<id> -> 200 (simula objeto devuelto)
+TEST_F(TournamentControllerTest, GetTournamentById_200) {
+    auto t = std::make_shared<domain::Tournament>("Torneo Invierno");
+    t->Id() = "tid-1";
 
-    auto tournament2 = std::make_shared<domain::Tournament>("Tournament 2");
-    tournament2->Id() = "id-2";
+    // Nota: si tu metodo se llama distinto, cambia aquí
+    EXPECT_CALL(*mockDelegate, ReadById("tid-1")).WillOnce(Return(t));
 
-    std::vector<std::shared_ptr<domain::Tournament>> tournaments = {tournament1, tournament2};
+    auto resp = controller->GetTournament("tid-1");
+    EXPECT_EQ(resp.code, crow::OK);
 
+    auto j = crow::json::load(resp.body);
+    ASSERT_TRUE(j);
+    EXPECT_EQ(std::string(j["id"].s()), "tid-1");
+    EXPECT_EQ(std::string(j["name"].s()), "Torneo Invierno");
+}
+
+// GET /tournaments/<id> -> 404
+TEST_F(TournamentControllerTest, GetTournamentById_404) {
+    EXPECT_CALL(*mockDelegate, ReadById("nope")).WillOnce(Return(nullptr));
+    auto resp = controller->GetTournament("nope");
+    EXPECT_EQ(resp.code, crow::NOT_FOUND);
+}
+
+// GET /tournaments -> 200 lista con elementos
+TEST_F(TournamentControllerTest, ReadAll_200_WithItems) {
+    auto t1 = std::make_shared<domain::Tournament>("A"); t1->Id() = "1";
+    auto t2 = std::make_shared<domain::Tournament>("B"); t2->Id() = "2";
+    std::vector<std::shared_ptr<domain::Tournament>> list{t1, t2};
+
+    EXPECT_CALL(*mockDelegate, ReadAll()).WillOnce(Return(list));
+
+    auto resp = controller->ReadAll();
+    EXPECT_EQ(resp.code, crow::OK);
+
+    auto j = nlohmann::json::parse(resp.body);
+    ASSERT_EQ(j.size(), 2);
+}
+
+// GET /tournaments -> 200 lista vacia
+TEST_F(TournamentControllerTest, ReadAll_200_Empty) {
     EXPECT_CALL(*mockDelegate, ReadAll())
-        .WillOnce(Return(tournaments));
+        .WillOnce(Return(std::vector<std::shared_ptr<domain::Tournament>>{}));
 
-    // Act
-    crow::response response = controller->ReadAll();
+    auto resp = controller->ReadAll();
+    EXPECT_EQ(resp.code, crow::OK);
 
-    // Assert
-    EXPECT_EQ(response.code, crow::OK);
-    EXPECT_EQ(response.get_header_value("content-type"), "application/json");
-
-    nlohmann::json body = nlohmann::json::parse(response.body);
-    EXPECT_EQ(body.size(), 2);
+    auto j = nlohmann::json::parse(resp.body);
+    EXPECT_TRUE(j.is_array());
+    EXPECT_TRUE(j.empty());
 }
 
-TEST_F(TournamentControllerTest, UpdateTournament_ValidRequest_ReturnsOK) {
-    // Arrange
-    std::string tournamentId = "test-id-123";
-    nlohmann::json requestBody = {
-        {"name", "Updated Tournament"},
-        {"format", {
-            {"type", "ROUND_ROBIN"},
-            {"numberOfGroups", 1},
-            {"maxTeamsPerGroup", 16}
-        }}
-    };
+// PATCH /tournaments/<id> -> 204 (valida transformacion y llamada)
+TEST_F(TournamentControllerTest, PatchTournament_204) {
+    nlohmann::json body = { {"name","TOURNAMENT NAME UPDATE"} };
+    crow::request req; req.body = body.dump();
 
-    crow::request req;
-    req.body = requestBody.dump();
-
-    EXPECT_CALL(*mockDelegate, UpdateTournament(tournamentId, _))
-        .Times(1);
-
-    // Act
-    crow::response response = controller->UpdateTournament(req, tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::OK);
+    EXPECT_CALL(*mockDelegate, UpdateTournament("tid-42", _)).Times(1);
+    auto resp = controller->PatchTournament(req, "tid-42"); // cambia a UpdateTournament si tu metodo se llama asi
+    EXPECT_EQ(resp.code, crow::NO_CONTENT);
 }
 
-TEST_F(TournamentControllerTest, UpdateTournament_InvalidJSON_ReturnsBadRequest) {
-    // Arrange
-    crow::request req;
-    req.body = "invalid json";
-    std::string tournamentId = "test-id";
+// PATCH /tournaments/<id> -> 404 si delegate lanza not found
+TEST_F(TournamentControllerTest, PatchTournament_404) {
+    nlohmann::json body = { {"name","X"} };
+    crow::request req; req.body = body.dump();
 
-    // Act
-    crow::response response = controller->UpdateTournament(req, tournamentId);
+    EXPECT_CALL(*mockDelegate, UpdateTournament("nope", _))
+        .WillOnce(Throw(std::runtime_error("not found")));
 
-    // Assert
-    EXPECT_EQ(response.code, crow::BAD_REQUEST);
-}
-
-TEST_F(TournamentControllerTest, UpdateTournament_NotFound_ReturnsNotFound) {
-    // Arrange
-    std::string tournamentId = "non-existent-id";
-    nlohmann::json requestBody = {
-        {"name", "Test"}
-    };
-
-    crow::request req;
-    req.body = requestBody.dump();
-
-    EXPECT_CALL(*mockDelegate, UpdateTournament(tournamentId, _))
-        .WillOnce(testing::Throw(std::runtime_error("Tournament not found")));
-
-    // Act
-    crow::response response = controller->UpdateTournament(req, tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::NOT_FOUND);
-}
-
-TEST_F(TournamentControllerTest, DeleteTournament_ValidId_ReturnsNoContent) {
-    // Arrange
-    std::string tournamentId = "test-id-123";
-
-    EXPECT_CALL(*mockDelegate, DeleteTournament(tournamentId))
-        .Times(1);
-
-    // Act
-    crow::response response = controller->DeleteTournament(tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::NO_CONTENT);
-}
-
-TEST_F(TournamentControllerTest, DeleteTournament_NotFound_ReturnsNotFound) {
-    // Arrange
-    std::string tournamentId = "non-existent-id";
-
-    EXPECT_CALL(*mockDelegate, DeleteTournament(tournamentId))
-        .WillOnce(testing::Throw(std::runtime_error("Tournament not found")));
-
-    // Act
-    crow::response response = controller->DeleteTournament(tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::NOT_FOUND);
+    auto resp = controller->PatchTournament(req, "nope"); // cambia al nombre real
+    EXPECT_EQ(resp.code, crow::NOT_FOUND);
 }

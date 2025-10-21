@@ -6,6 +6,9 @@ set(TEST_SOURCES
         ../src/controller/TeamController.cpp
         ../src/controller/TournamentController.cpp
         delegate/TournamentDelegateTest.cpp
+        controller/GroupControllerTest.cpp
+        delegate/TeamDelegateTest.cpp
+        delegate/GroupDelegateTest.cpp
 )
 
 set(SOURCES ${TEST_SOURCES})
