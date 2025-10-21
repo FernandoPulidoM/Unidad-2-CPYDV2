@@ -11,8 +11,7 @@ set(TEST_SOURCES
         controller/TeamControllerTest.cpp
         delegate/TeamDelegateTest.cpp
 
-        #        delegate/GroupDelegateTest.cpp
-
+        controller/GroupControllerTest.cpp
 
         # fuentes de producción necesarias por estos tests
         ../src/controller/TournamentController.cpp
@@ -21,9 +20,9 @@ set(TEST_SOURCES
         ../src/delegate/TeamDelegate.cpp
         mocks/TeamDelegateMock.hpp
         mocks/TeamRepositoryMock.h
-        #        ../src/controller/GroupController.cpp
-
-
+        mocks/GroupRepositoryMock.hpp
+        ../src/controller/GroupController.cpp
+        mocks/GroupDelegateMock.hpp
 
 
 )
