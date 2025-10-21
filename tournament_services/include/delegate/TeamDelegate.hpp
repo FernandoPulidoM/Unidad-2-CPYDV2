@@ -8,6 +8,9 @@
 
 #include "persistence/repository/IRepository.hpp"
 #include "domain/Team.hpp"
+
+#include <expected>  // ← AGREGA ESTO
+
 #include "ITeamDelegate.hpp"
 
 class TeamDelegate : public ITeamDelegate {
@@ -18,8 +21,6 @@ public:
     std::vector<std::shared_ptr<domain::Team>> GetAllTeams() override;
     std::string_view SaveTeam( const domain::Team& team) override;
     void DeleteTeam(std::string_view id) override;
-
-    // ← AGREGA ESTA LÍNEA
     void UpdateTeam(std::string_view id, const domain::Team& team) override;
 };
 

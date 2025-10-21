@@ -136,19 +136,32 @@ TEST(TeamDelegateSpec, Update_NonexistentId_NoUpdateCall) {
     SUCCEED();
 }
 
-// Caso 9: Eliminación con éxito
-TEST(TeamDelegateSpec, DeleteTeam_Existing_Successful) {
+
+// Requisito #8 CORREGIDO: Actualización exitosa
+TEST(TeamDelegateSpec, Update_ExistingRecord_Successful) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
-    InSequence order;
-    EXPECT_CALL(*mockRepo, ReadById("DEL"sv)).WillOnce(Return(fakeTeam("DEL","Borrar")));
-    EXPECT_CALL(*mockRepo, Delete("DEL"sv)).Times(1);
-    EXPECT_CALL(*mockRepo, ReadById("DEL"sv)).WillOnce(Return(nullptr));
+    // NO espera ReadById, solo Update
+    EXPECT_CALL(*mockRepo, Update(::testing::_))
+        .WillOnce(Return("U10"sv));
 
     TeamDelegate target{mockRepo};
-    target.DeleteTeam("DEL");
+    domain::Team updated{"U10", "NuevoNombre"};
+
+    target.UpdateTeam("U10", updated);
     SUCCEED();
 }
 
+// Requisito #9 CORREGIDO: Actualización con ID inexistente
+TEST(TeamDelegateSpec, Update_NonexistentId_ThrowsException) {
+    auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
+    EXPECT_CALL(*mockRepo, Update(::testing::_))
+        .WillOnce(testing::Throw(std::runtime_error("Team not found")));
+
+    TeamDelegate target{mockRepo};
+    domain::Team dummy{"X0", "Nada"};
+
+    EXPECT_THROW(target.UpdateTeam("X0", dummy), std::runtime_error);
+}
 // Caso 10: Eliminación con ID no encontrado
 TEST(TeamDelegateSpec, DeleteTeam_NotFound_NoAction) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();

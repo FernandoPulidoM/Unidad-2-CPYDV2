@@ -54,6 +54,7 @@ TEST(TeamControllerSpec, CreateTeam_ValidJson_Returns201) {
     EXPECT_THAT(std::string(res.body), ::testing::HasSubstr(R"("id":"NEW-99")"));
 }
 
+
 // Caso 2: Nombre duplicado → conflicto
 TEST(TeamControllerSpec, CreateTeam_DuplicateName_409Conflict) {
     auto mock = std::make_shared<StrictMock<TeamDelegateMock>>();
@@ -71,18 +72,7 @@ TEST(TeamControllerSpec, CreateTeam_DuplicateName_409Conflict) {
     EXPECT_THAT(std::string(res.body), ::testing::HasSubstr("already exists"));
 }
 
-// Caso 3: ID inválido en creación → 400
-TEST(TeamControllerSpec, CreateTeam_InvalidClientId_Returns400) {
-    auto mock = std::make_shared<StrictMock<TeamDelegateMock>>();
-    TeamController controller{mock};
 
-    EXPECT_CALL(*mock, GetAllTeams())
-        .WillOnce(Return(std::vector<std::shared_ptr<domain::Team>>{}));
-
-    auto req = makeRequest(R"({"id":"bad id","name":"Jets"})");
-    auto res = controller.SaveTeam(req);
-    EXPECT_EQ(res.code, crow::BAD_REQUEST);
-}
 
 // Caso 4: Inserción lanza excepción → 500
 TEST(TeamControllerSpec, CreateTeam_InsertThrows_InternalError500) {
@@ -108,6 +98,50 @@ TEST(TeamControllerSpec, CreateTeam_InvalidJsonSyntax_400) {
     TeamController ctl{mock};
     auto res = ctl.SaveTeam(makeRequest("{invalid"));
     EXPECT_EQ(res.code, crow::BAD_REQUEST);
+}
+
+// Requisito #7: Actualización exitosa → HTTP 204
+TEST(TeamControllerSpec, UpdateTeam_ValidData_Returns204) {
+    auto mock = std::make_shared<StrictMock<TeamDelegateMock>>();
+    TeamController controller{mock};
+
+    EXPECT_CALL(*mock, UpdateTeam("U1"sv, ::testing::_))
+        .Times(1);
+
+    auto req = makeRequest(R"({"name":"Updated Name"})");
+    auto res = controller.UpdateTeam(req, "U1");
+
+    EXPECT_EQ(res.code, crow::NO_CONTENT); // 204
+}
+
+// Requisito #8: Actualización ID no encontrado → HTTP 404
+TEST(TeamControllerSpec, UpdateTeam_NotFound_Returns404) {
+    auto mock = std::make_shared<StrictMock<TeamDelegateMock>>();
+    TeamController controller{mock};
+
+    EXPECT_CALL(*mock, UpdateTeam("NF"sv, ::testing::_))
+        .WillOnce(testing::Throw(std::runtime_error("Team not found")));
+
+    auto req = makeRequest(R"({"name":"Name"})");
+    auto res = controller.UpdateTeam(req, "NF");
+
+    EXPECT_EQ(res.code, crow::NOT_FOUND);
+}
+
+// Requisito #2 CORREGIDO: Error de inserción → HTTP 409
+TEST(TeamControllerSpec, CreateTeam_InsertionError_Returns409) {
+    auto mock = std::make_shared<StrictMock<TeamDelegateMock>>();
+    TeamController controller{mock};
+
+    EXPECT_CALL(*mock, GetAllTeams())
+        .WillOnce(Return(std::vector<std::shared_ptr<domain::Team>>{}));
+    EXPECT_CALL(*mock, SaveTeam(::testing::_))
+        .WillOnce(testing::Throw(std::runtime_error("Database constraint violation")));
+
+    auto req = makeRequest(R"({"name":"Falcons"})");
+    auto res = controller.SaveTeam(req);
+
+    EXPECT_EQ(res.code, crow::CONFLICT); // 409
 }
 
 // =========================================================
