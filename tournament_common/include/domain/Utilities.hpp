@@ -117,6 +117,11 @@ namespace domain {
         }
         json["name"].get_to(group.Name());
         json["teams"].get_to(group.Teams());
+//si no contiene un arreglo de teams, saltartelo
+        if (auto it = json.find("teams"); it != json.end() && it->is_array()) {
+            it->get_to(group.Teams());
+        }
+
     }
 
     inline void to_json(nlohmann::json& json, const std::shared_ptr<Group>& group) {
