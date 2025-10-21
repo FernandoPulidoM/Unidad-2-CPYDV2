@@ -59,12 +59,46 @@ inline std::expected<std::shared_ptr<domain::Group>, std::string> GroupDelegate:
         return std::unexpected("Error when reading to DB");
     }
 }
+
+
 inline std::expected<void, std::string> GroupDelegate::UpdateGroup(const std::string_view& tournamentId, const domain::Group& group) {
-    return std::unexpected("Not implemented");
+    try {
+        // Verificar que el torneo existe
+        auto tournament = tournamentRepository->ReadById(tournamentId.data());
+        if (tournament == nullptr) {
+            return std::unexpected("Tournament doesn't exist");
+        }
+
+        // Verificar que el grupo existe
+        auto existingGroup = groupRepository->FindByTournamentIdAndGroupId(tournamentId, group.Id());
+        if (existingGroup == nullptr) {
+            return std::unexpected("Group doesn't exist");
+        }
+
+        // Actualizar el grupo
+        groupRepository->Update(group);
+        return {};
+    } catch (const std::exception& e) {
+        return std::unexpected(std::string("Error updating group: ") + e.what());
+    }
 }
+
 inline std::expected<void, std::string> GroupDelegate::RemoveGroup(const std::string_view& tournamentId, const std::string_view& groupId) {
-    return std::unexpected("Not implemented");
+    try {
+        // Verificar que el grupo existe
+        auto group = groupRepository->FindByTournamentIdAndGroupId(tournamentId, groupId);
+        if (group == nullptr) {
+            return std::unexpected("Group doesn't exist");
+        }
+
+        // Eliminar el grupo
+        groupRepository->Delete(std::string(groupId));
+        return {};
+    } catch (const std::exception& e) {
+        return std::unexpected(std::string("Error deleting group: ") + e.what());
+    }
 }
+
 
 std::expected<void, std::string> GroupDelegate::UpdateTeams(const std::string_view& tournamentId, const std::string_view& groupId, const std::vector<domain::Team>& teams) {
     const auto group = groupRepository->FindByTournamentIdAndGroupId(tournamentId, groupId);

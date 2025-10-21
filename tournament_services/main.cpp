@@ -5,6 +5,9 @@
 
 #include <activemq/library/ActiveMQCPP.h>
 
+#include "configuration/RouteDefinition.hpp"
+#include "configuration/ContainerSetup.hpp"
+#include "controller/GroupController.hpp"
 #include "include/configuration/ContainerSetup.hpp"
 #include "include/configuration/RunConfiguration.hpp"
 

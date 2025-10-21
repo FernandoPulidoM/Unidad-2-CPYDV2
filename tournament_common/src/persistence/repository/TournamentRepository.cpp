@@ -32,6 +32,7 @@ std::shared_ptr<domain::Tournament> TournamentRepository::ReadById(std::string i
     return tournament;
 }
 
+
 std::string TournamentRepository::Create (const domain::Tournament & entity) {
 
     const nlohmann::json tournamentDoc = entity;
@@ -45,6 +46,7 @@ std::string TournamentRepository::Create (const domain::Tournament & entity) {
 
     return result[0]["id"].c_str();
 }
+
 
 std::string TournamentRepository::Update(const domain::Tournament& entity) {
     auto pooled = connectionProvider->Connection();

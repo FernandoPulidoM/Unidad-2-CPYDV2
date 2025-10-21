@@ -38,7 +38,20 @@ std::string GroupRepository::Update (const domain::Group & entity) {
 }
 
 void GroupRepository::Delete(std::string id) {
+    auto pooled = connectionProvider->Connection();
+    auto connection = dynamic_cast<PostgresConnection*>(&*pooled);
 
+    pqxx::work tx(*(connection->connection));
+    pqxx::result r = tx.exec_params(
+        "DELETE FROM groups WHERE id = $1::uuid;",
+        id
+    );
+
+    tx.commit();
+
+    if (r.affected_rows() == 0) {
+        throw std::runtime_error("Group not found");
+    }
 }
 
 std::vector<std::shared_ptr<domain::Group>> GroupRepository::ReadAll() {
@@ -118,3 +131,4 @@ void GroupRepository::UpdateGroupAddTeam(const std::string_view& groupId, const 
     const pqxx::result result = tx.exec(pqxx::prepped{"update_group_add_team"}, pqxx::params{groupId.data(), teamDocument.dump()});
     tx.commit();
 }
+

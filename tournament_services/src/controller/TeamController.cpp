@@ -66,9 +66,40 @@ crow::response TeamController::DeleteTeam(const std::string& teamId) const {
     }
 }
 
+crow::response TeamController::UpdateTeam(const crow::request& request, const std::string& teamId) const {
+    if(!std::regex_match(teamId, ID_VALUE)) {
+        return crow::response{crow::BAD_REQUEST, "Invalid ID format"};
+    }
+
+    try {
+        if(!nlohmann::json::accept(request.body)) {
+            return crow::response{crow::BAD_REQUEST, "Invalid JSON"};
+        }
+
+        auto requestBody = nlohmann::json::parse(request.body);
+        domain::Team team = requestBody;
+
+        // ← IMPORTANTE: Asignar el id de la URL
+        team.Id = teamId;
+
+        teamDelegate->UpdateTeam(teamId, team);
+
+        crow::response response;
+        response.code = crow::OK;
+        response.add_header(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE);
+        return response;
+    } catch (const std::runtime_error& e) {
+        return crow::response{crow::NOT_FOUND, e.what()};
+    } catch (const std::exception& e) {
+        return crow::response{crow::INTERNAL_SERVER_ERROR, e.what()};
+    }
+}
+
 REGISTER_ROUTE(TeamController, getTeam, "/teams/<string>", "GET"_method)
 REGISTER_ROUTE(TeamController, getAllTeams, "/teams", "GET"_method)
 REGISTER_ROUTE(TeamController, SaveTeam, "/teams", "POST"_method)
 
 // Agregar al final con los otros REGISTER_ROUTE:
 REGISTER_ROUTE(TeamController, DeleteTeam, "/teams/<string>", "DELETE"_method)
+// Al final, después de los otros REGISTER_ROUTE:
+REGISTER_ROUTE(TeamController, UpdateTeam, "/teams/<string>", "PUT"_method)

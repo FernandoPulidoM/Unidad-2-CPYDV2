@@ -66,12 +66,42 @@ public:
     }
 
     std::string_view Update(const domain::Team &entity) override {
-        return "newID";
+        auto pooled = connectionProvider->Connection();
+        auto connection = dynamic_cast<PostgresConnection*>(&*pooled);
+
+        nlohmann::json teamDoc = entity;
+
+        pqxx::work tx(*(connection->connection));
+        pqxx::result r = tx.exec_params(
+            "UPDATE teams SET document = $1 WHERE id = $2::uuid RETURNING id;",
+            teamDoc.dump(),
+            entity.Id
+        );
+
+        tx.commit();
+
+        if (r.empty()) {
+            throw std::runtime_error("Team not found");
+        }
+
+        return r[0]["id"].c_str();
     }
 
+    void Delete(std::string_view id) override {
+        auto pooled = connectionProvider->Connection();
+        auto connection = dynamic_cast<PostgresConnection*>(&*pooled);
 
-    void Delete(std::string_view id) override{
-        
+        pqxx::work tx(*(connection->connection));
+        pqxx::result r = tx.exec_params(
+            "DELETE FROM teams WHERE id = $1::uuid;",
+            id.data()
+        );
+
+        tx.commit();
+
+        if (r.affected_rows() == 0) {
+            throw std::runtime_error("Team not found");
+        }
     }
 };
 
