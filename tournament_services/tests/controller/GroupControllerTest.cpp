@@ -5,10 +5,10 @@
 #include <gmock/gmock.h>
 #include <nlohmann/json.hpp>
 
-#include "controller/GroupController.hpp"
-#include "mocks/GroupDelegateMock.hpp"
-#include "domain/Group.hpp"
-#include "domain/Team.hpp"
+#include "../../include/controller/GroupController.hpp"
+#include "../mocks/GroupDelegateMock.hpp"
+#include "../../../tournament_common/include/domain/Group.hpp"
+#include "../../../tournament_common/include/domain/Team.hpp"
 
 using ::testing::StrictMock;
 using ::testing::NiceMock;
@@ -155,52 +155,60 @@ TEST(GroupControllerTest, UpdateGroup_NotFound_404) {
 }
 
 /*
-   Test 7: Al método que procesa agregar un equipo a un grupo en un torneo,
-   validar la transformación de JSON al objeto Team y respuesta HTTP 204
+   Test 7: Al método que procesa agregar equipos a un grupo (usando UpdateTeams),
+   validar la transformación de JSON al array de Teams y respuesta HTTP 204
 */
-TEST(GroupControllerTest, AddTeamToGroup_Success_204) {
+TEST(GroupControllerTest, UpdateTeams_AddOneTeam_Success_204) {
     auto mock = std::make_shared<StrictMock<GroupDelegateMock>>();
 
-    EXPECT_CALL(*mock, AddTeamToGroup("T1"sv, "G1"sv, "E1"sv))
-        .WillOnce(Return(std::expected<void, std::string>{}));
+    EXPECT_CALL(*mock, UpdateTeams("T1"sv, "G1"sv, ::testing::_))
+        .WillOnce(Invoke([](const std::string_view& tid, const std::string_view& gid,
+                            const std::vector<domain::Team>& teams){
+            EXPECT_EQ(tid, "T1");
+            EXPECT_EQ(gid, "G1");
+            EXPECT_EQ(teams.size(), 1u);
+            EXPECT_EQ(teams[0].Id, "E1");
+            EXPECT_EQ(teams[0].Name, "Team One");
+            return std::expected<void, std::string>{};
+        }));
 
     GroupController ctl{mock};
-    auto req = make_req(R"({"id":"E1","name":"Team One"})");
-    auto res = ctl.AddTeamToGroup(req, "T1", "G1");
+    auto req = make_req(R"([{"id":"E1","name":"Team One"}])");
+    auto res = ctl.UpdateTeams(req, "T1", "G1");
 
     EXPECT_EQ(res.code, crow::NO_CONTENT);
 }
 
 /*
-   Test 8: Al método que procesa agregar un equipo a un grupo,
-   simular que el equipo no exista y validar HTTP 422
+   Test 8: Al método que procesa agregar equipos,
+   simular que un equipo no exista y validar HTTP 422
 */
-TEST(GroupControllerTest, AddTeamToGroup_TeamNotExist_422) {
+TEST(GroupControllerTest, UpdateTeams_TeamNotExist_422) {
     auto mock = std::make_shared<StrictMock<GroupDelegateMock>>();
 
-    EXPECT_CALL(*mock, AddTeamToGroup("T1"sv, "G1"sv, "E999"sv))
-        .WillOnce(Return(std::unexpected("Team doesn't exist")));
+    EXPECT_CALL(*mock, UpdateTeams("T1"sv, "G1"sv, ::testing::_))
+        .WillOnce(Return(std::unexpected("Team E999 doesn't exist")));
 
     GroupController ctl{mock};
-    auto req = make_req(R"({"id":"E999","name":"Ghost Team"})");
-    auto res = ctl.AddTeamToGroup(req, "T1", "G1");
+    auto req = make_req(R"([{"id":"E999","name":"Ghost Team"}])");
+    auto res = ctl.UpdateTeams(req, "T1", "G1");
 
     EXPECT_EQ(res.code, 422);
 }
 
 /*
-   Test 9: Al método que procesa agregar un equipo a un grupo,
+   Test 9: Al método que procesa agregar equipos,
    simular que el grupo esté lleno y validar HTTP 422
 */
-TEST(GroupControllerTest, AddTeamToGroup_GroupFull_422) {
+TEST(GroupControllerTest, UpdateTeams_GroupFull_422) {
     auto mock = std::make_shared<StrictMock<GroupDelegateMock>>();
 
-    EXPECT_CALL(*mock, AddTeamToGroup("T1"sv, "G1"sv, "E3"sv))
-        .WillOnce(Return(std::unexpected("Group is full")));
+    EXPECT_CALL(*mock, UpdateTeams("T1"sv, "G1"sv, ::testing::_))
+        .WillOnce(Return(std::unexpected("Group at max capacity")));
 
     GroupController ctl{mock};
-    auto req = make_req(R"({"id":"E3","name":"Team Three"})");
-    auto res = ctl.AddTeamToGroup(req, "T1", "G1");
+    auto req = make_req(R"([{"id":"E3","name":"Team Three"}])");
+    auto res = ctl.UpdateTeams(req, "T1", "G1");
 
     EXPECT_EQ(res.code, 422);
 }
@@ -254,7 +262,15 @@ TEST(GroupControllerTest, UpdateTeams_Success_204) {
     auto mock = std::make_shared<StrictMock<GroupDelegateMock>>();
 
     EXPECT_CALL(*mock, UpdateTeams("T1"sv, "G1"sv, ::testing::_))
-        .WillOnce(Return(std::expected<void, std::string>{}));
+        .WillOnce(Invoke([](const std::string_view& tid, const std::string_view& gid,
+                            const std::vector<domain::Team>& teams){
+            EXPECT_EQ(tid, "T1");
+            EXPECT_EQ(gid, "G1");
+            EXPECT_EQ(teams.size(), 2u);
+            EXPECT_EQ(teams[0].Id, "A");
+            EXPECT_EQ(teams[1].Id, "B");
+            return std::expected<void, std::string>{};
+        }));
 
     GroupController ctl{mock};
     auto req = make_req(R"([{"id":"A","name":"Alpha"},{"id":"B"}])");

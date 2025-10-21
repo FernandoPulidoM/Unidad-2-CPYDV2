@@ -6,44 +6,53 @@
 #include <vector>
 #include <expected>
 
-#include "delegate/IGroupDelegate.hpp"
-#include "domain/Group.hpp"
-#include "domain/Team.hpp"
+#include "../../include/delegate/IGroupDelegate.hpp"
+#include "../../../tournament_common/include/domain/Group.hpp"
+#include "../../../tournament_common/include/domain/Team.hpp"
 
+/**
+ * Mock de IGroupDelegate para pruebas unitarias del GroupController
+ * Respeta exactamente las firmas definidas en IGroupDelegate.hpp
+ *
+ * NOTA: Los tipos de retorno con comas (std::expected) deben estar entre paréntesis extra
+ */
 class GroupDelegateMock : public IGroupDelegate {
 public:
-    MOCK_METHOD(std::expected<std::string, std::string>, 
-                CreateGroup, 
-                (std::string_view tournamentId, const domain::Group& group), 
+    // CreateGroup: retorna el ID del grupo creado o error
+    MOCK_METHOD((std::expected<std::string, std::string>),
+                CreateGroup,
+                (const std::string_view& tournamentId, const domain::Group& group),
                 (override));
-    
-    MOCK_METHOD(std::expected<std::shared_ptr<domain::Group>, std::string>, 
-                GetGroup, 
-                (std::string_view tournamentId, std::string_view groupId), 
+
+    // GetGroups: retorna lista de grupos de un torneo o error
+    MOCK_METHOD((std::expected<std::vector<std::shared_ptr<domain::Group>>, std::string>),
+                GetGroups,
+                (const std::string_view& tournamentId),
                 (override));
-    
-    MOCK_METHOD(std::expected<std::vector<std::shared_ptr<domain::Group>>, std::string>, 
-                GetGroups, 
-                (std::string_view tournamentId), 
+
+    // GetGroup: retorna un grupo específico o error
+    MOCK_METHOD((std::expected<std::shared_ptr<domain::Group>, std::string>),
+                GetGroup,
+                (const std::string_view& tournamentId, const std::string_view& groupId),
                 (override));
-    
-    MOCK_METHOD(std::expected<void, std::string>, 
-                UpdateGroup, 
-                (std::string_view tournamentId, const domain::Group& group), 
+
+    // UpdateGroup: actualiza un grupo, retorna void o error
+    MOCK_METHOD((std::expected<void, std::string>),
+                UpdateGroup,
+                (const std::string_view& tournamentId, const domain::Group& group),
                 (override));
-    
-    MOCK_METHOD(std::expected<void, std::string>, 
-                RemoveGroup, 
-                (std::string_view tournamentId, std::string_view groupId), 
+
+    // RemoveGroup: elimina un grupo, retorna void o error
+    MOCK_METHOD((std::expected<void, std::string>),
+                RemoveGroup,
+                (const std::string_view& tournamentId, const std::string_view& groupId),
                 (override));
-    
-    MOCK_METHOD(std::expected<void, std::string>, 
-                AddTeamToGroup, 
-                (std::string_view tournamentId, std::string_view groupId, std::string_view teamId), 
-                (override));
-    
-    MOCK_METHOD(std::expected<void, std::string>, 
-                UpdateTeams, 
-                (std::string_view tournamentId, std::string_view groupId, const std::vector<domain::Team>& teams), 
+
+    // UpdateTeams: actualiza equipos de un grupo, retorna void o error
+    MOCK_METHOD((std::expected<void, std::string>),
+                UpdateTeams,
+                (const std::string_view& tournamentId,
+                 const std::string_view& groupId,
+                 const std::vector<domain::Team>& teams),
                 (override));
 };
