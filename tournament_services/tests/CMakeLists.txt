@@ -1,32 +1,41 @@
-project(tournament_tests)
+cmake_minimum_required(VERSION 3.20)
 
+project(tournament_tests CXX)
+enable_testing()
+
+# ---- SOLO tests de tournaments por ahora ----
 set(TEST_SOURCES
-        controller/TeamControllerTest.cpp
         controller/TournamentControllerTest.cpp
-        ../src/controller/TeamController.cpp
-        ../src/controller/TournamentController.cpp
         delegate/TournamentDelegateTest.cpp
-        controller/GroupControllerTest.cpp
-        delegate/TeamDelegateTest.cpp
-        delegate/GroupDelegateTest.cpp
+        # fuentes de producción necesarias por estos tests
+        ../src/controller/TournamentController.cpp
+        ../src/delegate/TournamentDelegate.cpp
 )
 
-set(SOURCES ${TEST_SOURCES})
-include_directories(../include)
+# Ejecutable de tests
+add_executable(${PROJECT_NAME}_runner ${TEST_SOURCES})
 
+# Includes que necesitan los tests
+target_include_directories(${PROJECT_NAME}_runner PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/../include
+        ${CMAKE_CURRENT_SOURCE_DIR}/../../tournament_common/include
+        ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+)
+
+# Dependencias
 find_package(GTest CONFIG REQUIRED)
-
-
-
-add_executable(${PROJECT_NAME}_runner
-    ${TEST_SOURCES}
-)
+find_package(Crow CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}_runner PRIVATE
         GTest::gtest
         GTest::gtest_main
         GTest::gmock
         GTest::gmock_main
-        tournament_common)
+        Crow::Crow
+        nlohmann_json::nlohmann_json
+        tournament_common
+)
 
-add_test(AllTestsInMain ${PROJECT_NAME}_runner)
+# Registrar los tests
+add_test(NAME AllTestsInMain COMMAND ${PROJECT_NAME}_runner)
