@@ -6,7 +6,6 @@ set(SERVICES_SOURCES
         src/delegate/TournamentDelegate.cpp
         src/controller/TournamentController.cpp
         src/controller/TeamController.cpp
-        src/delegate/TournamentRepository.cpp
         include/persistence/TournamentRepository.hpp
         src/controller/GroupController.cpp)
 

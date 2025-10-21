@@ -1,174 +1,182 @@
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
-#include <nlohmann/json.hpp>
-#include "controller/TournamentController.hpp"
-#include "delegate/ITournamentDelegate.hpp"
-#include "domain/Tournament.hpp"
+#include <expected>
+#include <stdexcept>
+#include <memory>
+#include "delegate/TournamentDelegate.hpp"
+#include "../mocks/TournamentRepositoryMock.h"
 
-using ::testing::Return;
-using ::testing::_;
+using namespace testing;
+using namespace std::literals;
 
-// Mock del ITournamentDelegate
-class MockTournamentDelegate : public ITournamentDelegate {
-public:
-    MOCK_METHOD(std::string, CreateTournament, (std::shared_ptr<domain::Tournament>), (override));
-    MOCK_METHOD(std::vector<std::shared_ptr<domain::Tournament>>, ReadAll, (), (override));
-    MOCK_METHOD(void, UpdateTournament, (const std::string&, std::shared_ptr<domain::Tournament>), (override));
-    MOCK_METHOD(void, DeleteTournament, (const std::string&), (override));
-};
+TEST(TournamentDelegateTest, CreateTournament_Success) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, Create(::testing::_))
+        .WillOnce(Return("T123"s));  // FIX: string, not string_view
+    TournamentDelegate sut{repo};
+    auto res = sut.CreateTournament(std::make_shared<domain::Tournament>("Liga", domain::TournamentFormat{1,4,domain::TournamentType::NFL}));
+    ASSERT_TRUE(res.has_value());
+    EXPECT_EQ(res.value(), "T123");
+}
 
-class TournamentControllerTest : public ::testing::Test {
-protected:
-    std::shared_ptr<MockTournamentDelegate> mockDelegate;
-    std::shared_ptr<TournamentController> controller;
+TEST(TournamentDelegateTest, CreateTournament_RepoThrows_ReturnsUnexpected) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, Create(::testing::_))
+    .WillOnce(::testing::Throw(std::runtime_error("db error")));
+    TournamentDelegate sut{repo};
+    auto res = sut.CreateTournament(std::make_shared<domain::Tournament>("Liga", domain::TournamentFormat{1,4,domain::TournamentType::NFL}));
+    ASSERT_FALSE(res.has_value());
+    EXPECT_THAT(res.error(), HasSubstr("db error"));
+}
 
-    void SetUp() override {
-        mockDelegate = std::make_shared<MockTournamentDelegate>();
-        controller = std::make_shared<TournamentController>(mockDelegate);
-    }
-};
+TEST(TournamentDelegateTest, ReadById_Found_ReturnsTournament) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    auto t = std::make_shared<domain::Tournament>("X", domain::TournamentFormat{1,2,domain::TournamentType::NFL});
+    EXPECT_CALL(*repo, ReadById("T1"))
+        .WillOnce(Return(t));
+    TournamentDelegate sut{repo};
+    auto result = sut.ReadById("T1");
+    ASSERT_TRUE(result.has_value());
+    ASSERT_NE(result.value(), nullptr);
+    EXPECT_EQ(result.value()->Name(), "X");
+}
 
-TEST_F(TournamentControllerTest, CreateTournament_ValidRequest_ReturnsCreated) {
-    // Arrange
-    nlohmann::json requestBody = {
-        {"name", "Test Tournament"},
-        {"format", {
-            {"type", "ROUND_ROBIN"},
-            {"numberOfGroups", 2},
-            {"maxTeamsPerGroup", 8}
-        }}
+TEST(TournamentDelegateTest, ReadById_Throws_ReturnsUnexpected) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, ReadById("T1"))
+    .WillOnce(::testing::Throw(std::runtime_error("boom")));
+    TournamentDelegate sut{repo};
+    auto result = sut.ReadById("T1");
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error(), HasSubstr("boom"));
+}
+
+TEST(TournamentDelegateTest, ReadAll_Empty_ReturnsOkEmptyVector) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, ReadAll())
+        .WillOnce(Return(std::vector<std::shared_ptr<domain::Tournament>>{}));
+    TournamentDelegate sut{repo};
+    auto result = sut.ReadAll();
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(result->empty());
+}
+
+TEST(TournamentDelegateTest, ReadAll_WithItems_ReturnsList) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    std::vector<std::shared_ptr<domain::Tournament>> tournaments {
+        std::make_shared<domain::Tournament>("Alpha", domain::TournamentFormat{1,2,domain::TournamentType::NFL}),
+        std::make_shared<domain::Tournament>("Beta",  domain::TournamentFormat{1,2,domain::TournamentType::NFL})
     };
-
-    crow::request req;
-    req.body = requestBody.dump();
-
-    std::string expectedId = "test-tournament-id-123";
-    EXPECT_CALL(*mockDelegate, CreateTournament(_))
-        .WillOnce(Return(expectedId));
-
-    // Act
-    crow::response response = controller->CreateTournament(req);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::CREATED);
-    EXPECT_EQ(response.get_header_value("location"), expectedId);
+    EXPECT_CALL(*repo, ReadAll()).WillOnce(Return(tournaments));
+    TournamentDelegate sut{repo};
+    auto result = sut.ReadAll();
+    ASSERT_TRUE(result.has_value());
+    ASSERT_EQ(result->size(), 2u);
+    EXPECT_EQ((*result)[0]->Name(), "Alpha");
+    EXPECT_EQ((*result)[1]->Name(), "Beta");
 }
 
-TEST_F(TournamentControllerTest, CreateTournament_InvalidJSON_ReturnsBadRequest) {
-    // Arrange
-    crow::request req;
-    req.body = "invalid json {";
-
-    // Act & Assert
-    EXPECT_THROW(controller->CreateTournament(req), std::exception);
+TEST(TournamentDelegateTest, ReadAll_RepoThrows_ReturnsUnexpected) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, ReadAll())
+      .WillOnce(::testing::Throw(std::runtime_error("boom")));
+    TournamentDelegate sut{repo};
+    auto result = sut.ReadAll();
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error(), HasSubstr("boom"));
 }
 
-TEST_F(TournamentControllerTest, ReadAll_ReturnsAllTournaments) {
-    // Arrange
-    auto tournament1 = std::make_shared<domain::Tournament>("Tournament 1");
-    tournament1->Id() = "id-1";
+TEST(TournamentDelegateTest, UpdateTournament_Success_ReturnsTrue) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
 
-    auto tournament2 = std::make_shared<domain::Tournament>("Tournament 2");
-    tournament2->Id() = "id-2";
+    auto existing = std::make_shared<domain::Tournament>("Old", domain::TournamentFormat{1,4,domain::TournamentType::NFL});
+    EXPECT_CALL(*repo, ReadById("U1"))
+        .WillOnce(Return(existing));  // ensure found
 
-    std::vector<std::shared_ptr<domain::Tournament>> tournaments = {tournament1, tournament2};
+    EXPECT_CALL(*repo, Update(::testing::_))
+        .WillOnce(Return("U1"s));     // or .Times(1) if Update is void
 
-    EXPECT_CALL(*mockDelegate, ReadAll())
-        .WillOnce(Return(tournaments));
-
-    // Act
-    crow::response response = controller->ReadAll();
-
-    // Assert
-    EXPECT_EQ(response.code, crow::OK);
-    EXPECT_EQ(response.get_header_value("content-type"), "application/json");
-
-    nlohmann::json body = nlohmann::json::parse(response.body);
-    EXPECT_EQ(body.size(), 2);
+    TournamentDelegate sut{repo};
+    auto result = sut.UpdateTournament("U1", domain::Tournament{"Liga", domain::TournamentFormat{1,4,domain::TournamentType::NFL}});
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(result.value());
 }
 
-TEST_F(TournamentControllerTest, UpdateTournament_ValidRequest_ReturnsOK) {
-    // Arrange
-    std::string tournamentId = "test-id-123";
-    nlohmann::json requestBody = {
-        {"name", "Updated Tournament"},
-        {"format", {
-            {"type", "ROUND_ROBIN"},
-            {"numberOfGroups", 1},
-            {"maxTeamsPerGroup", 16}
-        }}
-    };
 
-    crow::request req;
-    req.body = requestBody.dump();
+TEST(TournamentDelegateTest, UpdateTournament_Throws_ReturnsUnexpected) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
 
-    EXPECT_CALL(*mockDelegate, UpdateTournament(tournamentId, _))
-        .Times(1);
+    auto existing = std::make_shared<domain::Tournament>("Old", domain::TournamentFormat{1,4,domain::TournamentType::NFL});
+    EXPECT_CALL(*repo, ReadById("U1"))
+        .WillOnce(Return(existing));  // ensure found so Update is reached
 
-    // Act
-    crow::response response = controller->UpdateTournament(req, tournamentId);
+    EXPECT_CALL(*repo, Update(::testing::_))
+        .WillOnce(::testing::Invoke([](const domain::Tournament&) -> std::string {
+            throw std::runtime_error("db");
+        }));
+    // Si Update es void: use ThrowAction via lambda -> void
 
-    // Assert
-    EXPECT_EQ(response.code, crow::OK);
+    TournamentDelegate sut{repo};
+    auto result = sut.UpdateTournament("U1", domain::Tournament{"Liga", domain::TournamentFormat{1,4,domain::TournamentType::NFL}});
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error(), ::testing::HasSubstr("db"));
 }
 
-TEST_F(TournamentControllerTest, UpdateTournament_InvalidJSON_ReturnsBadRequest) {
-    // Arrange
-    crow::request req;
-    req.body = "invalid json";
-    std::string tournamentId = "test-id";
 
-    // Act
-    crow::response response = controller->UpdateTournament(req, tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::BAD_REQUEST);
+TEST(TournamentDelegateTest, DeleteTournament_Success_ReturnsTrue) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    auto t = std::make_shared<domain::Tournament>("N", domain::TournamentFormat{1,1,domain::TournamentType::NFL});
+    EXPECT_CALL(*repo, ReadById("D2")).WillOnce(Return(t));
+    EXPECT_CALL(*repo, Delete("D2")).Times(1);
+    TournamentDelegate sut{repo};
+    auto result = sut.DeleteTournament("D2");
+    ASSERT_TRUE(result.has_value());
+    EXPECT_TRUE(result.value());
 }
 
-TEST_F(TournamentControllerTest, UpdateTournament_NotFound_ReturnsNotFound) {
-    // Arrange
-    std::string tournamentId = "non-existent-id";
-    nlohmann::json requestBody = {
-        {"name", "Test"}
-    };
-
-    crow::request req;
-    req.body = requestBody.dump();
-
-    EXPECT_CALL(*mockDelegate, UpdateTournament(tournamentId, _))
-        .WillOnce(testing::Throw(std::runtime_error("Tournament not found")));
-
-    // Act
-    crow::response response = controller->UpdateTournament(req, tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::NOT_FOUND);
+TEST(TournamentDelegateTest, DeleteTournament_Throws_ReturnsUnexpected) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    auto t = std::make_shared<domain::Tournament>("N", domain::TournamentFormat{1,1,domain::TournamentType::NFL});
+    EXPECT_CALL(*repo, ReadById("D2")).WillOnce(Return(t));
+    EXPECT_CALL(*repo, Delete("D2"))
+        .WillOnce(::testing::Invoke([](const std::string&) -> void {
+            throw std::runtime_error("fk");
+        }));
+    TournamentDelegate sut{repo};
+    auto result = sut.DeleteTournament("D2");
+    ASSERT_FALSE(result.has_value());
+    EXPECT_THAT(result.error(), ::testing::HasSubstr("fk"));
 }
 
-TEST_F(TournamentControllerTest, DeleteTournament_ValidId_ReturnsNoContent) {
-    // Arrange
-    std::string tournamentId = "test-id-123";
+// UpdateTournament: id not found -> returns false and does not call Update
+TEST(TournamentDelegateTest, UpdateTournament_NotFound_ReturnsFalse) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, ReadById("U404")).WillOnce(Return(std::shared_ptr<domain::Tournament>{}));
+    EXPECT_CALL(*repo, Update(::testing::_)).Times(0);
 
-    EXPECT_CALL(*mockDelegate, DeleteTournament(tournamentId))
-        .Times(1);
-
-    // Act
-    crow::response response = controller->DeleteTournament(tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::NO_CONTENT);
+    TournamentDelegate sut{repo};
+    auto r = sut.UpdateTournament("U404", domain::Tournament{"X", {1,4,domain::TournamentType::NFL}});
+    ASSERT_TRUE(r.has_value());
+    EXPECT_FALSE(r.value());
 }
+// DeleteTournament: id not found -> returns false and does not call Delete
+TEST(TournamentDelegateTest, DeleteTournament_NotFound_ReturnsFalse) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, ReadById("D404")).WillOnce(Return(std::shared_ptr<domain::Tournament>{}));
+    EXPECT_CALL(*repo, Delete(::testing::_)).Times(0);
 
-TEST_F(TournamentControllerTest, DeleteTournament_NotFound_ReturnsNotFound) {
-    // Arrange
-    std::string tournamentId = "non-existent-id";
+    TournamentDelegate sut{repo};
+    auto r = sut.DeleteTournament("D404");
+    ASSERT_TRUE(r.has_value());
+    EXPECT_FALSE(r.value());
+}
+// (Opcional) ReadById: repo returns nullptr -> expected has value but pointer is null
+TEST(TournamentDelegateTest, ReadById_ReturnsNullptrWhenMissing) {
+    auto repo = std::make_shared<StrictMock<MockTournamentRepository>>();
+    EXPECT_CALL(*repo, ReadById("T404")).WillOnce(Return(std::shared_ptr<domain::Tournament>{}));
 
-    EXPECT_CALL(*mockDelegate, DeleteTournament(tournamentId))
-        .WillOnce(testing::Throw(std::runtime_error("Tournament not found")));
-
-    // Act
-    crow::response response = controller->DeleteTournament(tournamentId);
-
-    // Assert
-    EXPECT_EQ(response.code, crow::NOT_FOUND);
+    TournamentDelegate sut{repo};
+    auto r = sut.ReadById("T404");
+    ASSERT_TRUE(r.has_value());
+    EXPECT_EQ(r.value(), nullptr);
 }
