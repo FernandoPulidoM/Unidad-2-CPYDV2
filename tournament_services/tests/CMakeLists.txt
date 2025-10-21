@@ -7,9 +7,25 @@ enable_testing()
 set(TEST_SOURCES
         controller/TournamentControllerTest.cpp
         delegate/TournamentDelegateTest.cpp
+
+        controller/TeamControllerTest.cpp
+        delegate/TeamDelegateTest.cpp
+
+        #        delegate/GroupDelegateTest.cpp
+
+
         # fuentes de producción necesarias por estos tests
         ../src/controller/TournamentController.cpp
         ../src/delegate/TournamentDelegate.cpp
+        ../src/controller/TeamController.cpp
+        ../src/delegate/TeamDelegate.cpp
+        mocks/TeamDelegateMock.hpp
+        mocks/TeamRepositoryMock.h
+        #        ../src/controller/GroupController.cpp
+
+
+
+
 )
 
 # Ejecutable de tests
@@ -20,6 +36,8 @@ target_include_directories(${PROJECT_NAME}_runner PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/../include
         ${CMAKE_CURRENT_SOURCE_DIR}/../../tournament_common/include
         ${CMAKE_CURRENT_SOURCE_DIR}/mocks
+        ${CMAKE_SOURCE_DIR}/tournament_services/include
+
 )
 
 # Dependencias

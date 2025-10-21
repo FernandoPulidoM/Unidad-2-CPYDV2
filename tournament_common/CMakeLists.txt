@@ -4,6 +4,8 @@ set(CMAKE_CXX_STANDARD 23)
 set(COMMON_SOURCES
         src/persistence/repository/TournamentRepository.cpp
         src/persistence/repository/GroupRepository.cpp
+        ../tournament_services/tests/mocks/TeamDelegateMock.hpp
+        ../tournament_services/tests/mocks/TeamRepositoryMock.h
 )
 
 include_directories(include)
