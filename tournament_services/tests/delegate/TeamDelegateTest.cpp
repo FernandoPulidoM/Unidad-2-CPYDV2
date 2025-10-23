@@ -19,11 +19,9 @@
 using ::testing::NiceMock;
 using ::testing::StrictMock;
 using ::testing::Return;
-using ::testing::InSequence;
 using namespace std::literals;
 
 // ====== Utilidad auxiliar ======
-// Crea un puntero a objeto Team simulando uno real
 static std::shared_ptr<domain::Team> fakeTeam(std::string id, std::string name) {
     return std::make_shared<domain::Team>(domain::Team{std::move(id), std::move(name)});
 }
@@ -33,7 +31,6 @@ static std::shared_ptr<domain::Team> fakeTeam(std::string id, std::string name) 
 // ===============================================================
 
 // Caso 1: Inserción exitosa
-// Verifica que el ID retornado sea el mismo que simula el repositorio
 TEST(TeamDelegateSpec, CreateTeam_ReturnsGeneratedId) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
     EXPECT_CALL(*mockRepo, Create(::testing::_)).WillOnce(Return("gen-001"sv));
@@ -45,7 +42,6 @@ TEST(TeamDelegateSpec, CreateTeam_ReturnsGeneratedId) {
 }
 
 // Caso 2: Fallo en inserción
-// Cuando el repositorio no genera ID, se espera una respuesta vacía
 TEST(TeamDelegateSpec, CreateTeam_Fails_ReturnsEmpty) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
     EXPECT_CALL(*mockRepo, Create(::testing::_)).WillOnce(Return(""sv));
@@ -108,7 +104,7 @@ TEST(TeamDelegateSpec, FetchAll_WithTeams_ReturnsExpectedList) {
     EXPECT_EQ(res[1]->Name, "Bravo");
 }
 
-// Caso 7: Actualización exitosa (redefinido)
+// Caso 7: Actualización exitosa (conforme a la doc: ReadById -> Update)
 TEST(TeamDelegateSpec, Update_ExistingRecord_ReturnsTrue) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
     EXPECT_CALL(*mockRepo, ReadById("U10"sv)).WillOnce(Return(fakeTeam("U10", "Viejo")));
@@ -117,12 +113,11 @@ TEST(TeamDelegateSpec, Update_ExistingRecord_ReturnsTrue) {
     TeamDelegate target{mockRepo};
     domain::Team updated{"U10", "NuevoNombre"};
 
-    // En nuestro diseño UpdateTeam podría no retornar valor, se asume éxito si no lanza excepción
     target.UpdateTeam("U10", updated);
-    SUCCEED();  // marca que la llamada completó sin error
+    SUCCEED();
 }
 
-// Caso 8: Actualización con ID inexistente
+// Caso 8: Actualización con ID inexistente -> no debe llamar Update
 TEST(TeamDelegateSpec, Update_NonexistentId_NoUpdateCall) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
     EXPECT_CALL(*mockRepo, ReadById("X0"sv)).WillOnce(Return(nullptr));
@@ -131,38 +126,38 @@ TEST(TeamDelegateSpec, Update_NonexistentId_NoUpdateCall) {
     TeamDelegate target{mockRepo};
     domain::Team dummy{"X0", "Nada"};
 
-    // En este flujo no debe intentar actualizar
     target.UpdateTeam("X0", dummy);
     SUCCEED();
 }
 
-
-// Requisito #8 CORREGIDO: Actualización exitosa
-TEST(TeamDelegateSpec, Update_ExistingRecord_Successful) {
+// Caso 9 (corrigido para alinearse a la doc):
+// Éxito de actualización validando *explícitamente* ReadById -> Update (igual que Caso 7)
+TEST(TeamDelegateSpec, Update_ExistingRecord_SuccessPath_ReadsThenUpdates) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
-    // NO espera ReadById, solo Update
-    EXPECT_CALL(*mockRepo, Update(::testing::_))
-        .WillOnce(Return("U10"sv));
+    EXPECT_CALL(*mockRepo, ReadById("U10"sv)).WillOnce(Return(fakeTeam("U10", "Previo")));
+    EXPECT_CALL(*mockRepo, Update(::testing::_)).WillOnce(Return("U10"sv));
 
     TeamDelegate target{mockRepo};
     domain::Team updated{"U10", "NuevoNombre"};
-
     target.UpdateTeam("U10", updated);
     SUCCEED();
 }
 
-// Requisito #9 CORREGIDO: Actualización con ID inexistente
-TEST(TeamDelegateSpec, Update_NonexistentId_ThrowsException) {
+// Caso 10 (corrigido): ID inexistente NO lanza excepción, solo evita Update
+TEST(TeamDelegateSpec, Update_NonexistentId_ReturnsNoOp_NoException) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
-    EXPECT_CALL(*mockRepo, Update(::testing::_))
-        .WillOnce(testing::Throw(std::runtime_error("Team not found")));
+    EXPECT_CALL(*mockRepo, ReadById("X0"sv)).WillOnce(Return(nullptr));
+    EXPECT_CALL(*mockRepo, Update(::testing::_)).Times(0);
 
     TeamDelegate target{mockRepo};
     domain::Team dummy{"X0", "Nada"};
 
-    EXPECT_THROW(target.UpdateTeam("X0", dummy), std::runtime_error);
+    // No debe lanzar excepción
+    target.UpdateTeam("X0", dummy);
+    SUCCEED();
 }
-// Caso 10: Eliminación con ID no encontrado
+
+// Caso 11: Eliminación con ID no encontrado
 TEST(TeamDelegateSpec, DeleteTeam_NotFound_NoAction) {
     auto mockRepo = std::make_shared<StrictMock<MockTeamRepository>>();
     EXPECT_CALL(*mockRepo, ReadById("NF"sv)).WillOnce(Return(nullptr));
