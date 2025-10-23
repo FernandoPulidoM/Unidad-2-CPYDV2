@@ -18,20 +18,27 @@ crow::response GroupController::GetGroups(const std::string& tournamentId) {
         response.add_header(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE);
         return response;
     }
+    // Si falla, asumimos error del dominio (no se pidió diferenciar más en tests)
     return crow::response{crow::INTERNAL_SERVER_ERROR};
 }
 
 crow::response GroupController::GetGroup(const std::string& tournamentId, const std::string& groupId) {
-    if (auto group = this->groupDelegate->GetGroup(tournamentId, groupId)) {
-        const nlohmann::json body = *group;
+    auto r = this->groupDelegate->GetGroup(tournamentId, groupId);
+    if (r.has_value()) {
+        const nlohmann::json body = r.value();
         crow::response response{crow::OK, body.dump()};
         response.add_header(CONTENT_TYPE_HEADER, JSON_CONTENT_TYPE);
         return response;
     }
-    return crow::response{crow::INTERNAL_SERVER_ERROR};
+    // Los tests esperan 404 cuando el delegate regresa unexpected(...)
+    return crow::response{crow::NOT_FOUND, r.error()};
 }
 
 crow::response GroupController::CreateGroup(const crow::request& request, const std::string& tournamentId) {
+    if (!nlohmann::json::accept(request.body)) {
+        return crow::response{crow::BAD_REQUEST, "Invalid JSON"};
+    }
+
     auto requestBody = nlohmann::json::parse(request.body);
     domain::Group group = requestBody;
 
@@ -41,18 +48,21 @@ crow::response GroupController::CreateGroup(const crow::request& request, const 
         response.add_header("location", *groupId);
         response.code = crow::CREATED;
     } else {
+        // Tus tests mapean fallas de negocio a 422
         response.code = 422;
+        response.body = groupId.error();
     }
-
     return response;
 }
 
-crow::response GroupController::UpdateGroup(const crow::request& request, const std::string& tournamentId, const std::string& groupId) {
-    try {
-        if(!nlohmann::json::accept(request.body)) {
-            return crow::response{crow::BAD_REQUEST, "Invalid JSON"};
-        }
+crow::response GroupController::UpdateGroup(const crow::request& request,
+                                            const std::string& tournamentId,
+                                            const std::string& groupId) {
+    if(!nlohmann::json::accept(request.body)) {
+        return crow::response{crow::BAD_REQUEST, "Invalid JSON"};
+    }
 
+    try {
         auto requestBody = nlohmann::json::parse(request.body);
         domain::Group group = requestBody;
 
@@ -62,8 +72,10 @@ crow::response GroupController::UpdateGroup(const crow::request& request, const 
 
         auto result = groupDelegate->UpdateGroup(tournamentId, group);
         if (result) {
-            return crow::response{crow::OK};
+            // Los tests esperan 204 en éxito
+            return crow::response{crow::NO_CONTENT};
         } else {
+            // Y 404 cuando el delegate indica "Group doesn't exist"
             return crow::response{crow::NOT_FOUND, result.error()};
         }
     } catch (const std::exception& e) {
@@ -84,13 +96,19 @@ crow::response GroupController::DeleteGroup(const std::string& tournamentId, con
     }
 }
 
-crow::response GroupController::UpdateTeams(const crow::request& request, const std::string& tournamentId, const std::string& groupId) {
+crow::response GroupController::UpdateTeams(const crow::request& request,
+                                            const std::string& tournamentId,
+                                            const std::string& groupId) {
+    if (!nlohmann::json::accept(request.body)) {
+        return crow::response{crow::BAD_REQUEST, "Invalid JSON"};
+    }
+
     const std::vector<domain::Team> teams = nlohmann::json::parse(request.body);
     const auto result = groupDelegate->UpdateTeams(tournamentId, groupId, teams);
     if (result) {
         return crow::response{crow::NO_CONTENT};
     }
-
+    // Tus tests esperan 422 para errores de negocio aquí
     return crow::response{422, result.error()};
 }
 
