@@ -50,7 +50,27 @@ namespace config {
 
         builder.registerType<TournamentRepository>().as<IRepository<domain::Tournament, std::string>>().singleInstance();
 
+        // En containerSetup() agregar:
+
+        builder.registerType<MatchRepository>()
+            .as<IRepository<domain::Match, std::string>>()
+            .singleInstance();
+
+        builder.registerType<MatchDelegate>()
+            .as<IMatchDelegate>()
+            .singleInstance();
+
+        builder.registerType<MatchController>()
+            .singleInstance();
+
+        builder.registerType<QueueMessageConsumer>()
+            .named("matchEventsConsumer");
+
+        builder.registerType<TournamentMatchListener>()
+            .singleInstance();
+
         return builder.build();
     }
+
 }
 #endif //TOURNAMENTS_CONSUMER_CONTAINER_SETUP_HPP

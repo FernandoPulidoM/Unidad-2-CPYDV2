@@ -155,6 +155,41 @@ namespace domain {
         }
         json["teams"] = group.Teams();
     }
+
+    // En domain/Utilities.hpp - agregar serialización para Match
+
+    // TournamentPhase → JSON
+    inline void to_json(nlohmann::json& j, const domain::TournamentPhase& phase) {
+        j = domain::phaseToString(phase);
+    }
+
+    inline void from_json(const nlohmann::json& j, domain::TournamentPhase& phase) {
+        std::string str = j.get<std::string>();
+        if (str == "QUARTER_FINALS") phase = domain::TournamentPhase::QUARTER_FINALS;
+        else if (str == "SEMI_FINALS") phase = domain::TournamentPhase::SEMI_FINALS;
+        else if (str == "FINAL") phase = domain::TournamentPhase::FINAL;
+        else if (str == "THIRD_PLACE") phase = domain::TournamentPhase::THIRD_PLACE;
+    }
+
+    // MatchStatus → JSON
+    inline void to_json(nlohmann::json& j, const domain::MatchStatus& status) {
+        j = domain::statusToString(status);
+    }
+
+    inline void from_json(const nlohmann::json& j, domain::MatchStatus& status) {
+        std::string str = j.get<std::string>();
+        if (str == "PENDING") status = domain::MatchStatus::PENDING;
+        else if (str == "IN_PROGRESS") status = domain::MatchStatus::IN_PROGRESS;
+        else if (str == "COMPLETED") status = domain::MatchStatus::COMPLETED;
+        else if (str == "CANCELLED") status = domain::MatchStatus::CANCELLED;
+    }
+
+    // Match → JSON
+    NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(
+        domain::Match,
+        id, tournamentId, phase, team1, team2,
+        scoreTeam1, scoreTeam2, status, winnerId, nextMatchId
+    )
 }
 
 #endif /* FC7CD637_41CC_48DE_8D8A_BC2CFC528D72 */

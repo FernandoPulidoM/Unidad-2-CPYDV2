@@ -48,12 +48,35 @@ CREATE TABLE GROUPS (
 );
 CREATE UNIQUE INDEX tournament_group_unique_name_idx ON GROUPS (tournament_id,(document->>'name'));
 
-CREATE TABLE MATCHES (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+-- CREATE TABLE MATCHES (
+--     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+--     document JSONB NOT NULL,
+--     last_update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+--     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- );
+
+-- En db_script.sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS matches (
+                                       id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    tournament_id UUID NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
     document JSONB NOT NULL,
-    last_update_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    );
+
+-- Índices para performance
+CREATE INDEX idx_matches_tournament ON matches(tournament_id);
+CREATE INDEX idx_matches_phase ON matches((document->>'phase'));
+CREATE INDEX idx_matches_status ON matches((document->>'status'));
+
+-- Prepared statements
+PREPARE insert_match AS
+    INSERT INTO matches (document) VALUES ($1) RETURNING id;
+
+PREPARE select_match_by_id AS
+SELECT id, document FROM matches WHERE id = $1::uuid;
 
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO tournament_svc;
 GRANT DELETE ON ALL TABLES IN SCHEMA public TO tournament_svc;

@@ -8,6 +8,13 @@ set(COMMON_SOURCES
         ../tournament_services/tests/mocks/TeamRepositoryMock.h
         ../tournament_services/tests/mocks/GroupRepositoryMock.hpp
         ../tournament_services/tests/mocks/GroupDelegateMock.hpp
+        ../tournament_services/include/delegate/IMatchDelegate.hpp
+        ../tournament_services/include/delegate/MatchDelegate.hpp
+        ../tournament_services/src/delegate/MatchDelegate.cpp
+        include/domain/TournamentMatchListener.hpp
+        ../tournament_services/src/controller/TournamentMatchListener.cpp
+        include/persistence/repository/MatchRepository.hpp
+        src/persistence/repository/MatchRepository.cpp
 )
 
 include_directories(include)

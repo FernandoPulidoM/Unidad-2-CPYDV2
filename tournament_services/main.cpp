@@ -28,3 +28,30 @@ int main() {
         .run();
     activemq::library::ActiveMQCPP::shutdownLibrary();
 }
+
+//
+// int main() {
+//     // ... código existente ...
+//
+//     auto container = config::containerSetup();
+//
+//     // Iniciar listener
+//     auto listener = container->resolve<TournamentMatchListener>();
+//     std::thread listenerThread([listener]() {
+//         listener->Start();
+//     });
+//
+//     crow::SimpleApp app;
+//
+//     // Registrar rutas
+//     for (auto& def : routeRegistry()) {
+//         def.binder(app, container);
+//     }
+//
+//     app.port(8080).multithreaded().run();
+//
+//     // Esperar a que termine el listener
+//     listenerThread.join();
+//
+//     return 0;
+// }
