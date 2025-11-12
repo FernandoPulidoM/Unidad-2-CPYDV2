@@ -1,7 +1,11 @@
 project(tournament_consumer)
 
 set(CMAKE_CXX_STANDARD 23)
+
+# Fuentes del consumer (agregamos los processors)
 set(CONSUMER_SOURCES
+        src/processors/TeamAddedEventProcessor.cpp
+        src/processors/ScoreRecordedEventProcessor.cpp
 )
 
 find_package(libpqxx CONFIG REQUIRED)
@@ -27,7 +31,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 target_include_directories(${PROJECT_NAME} PRIVATE ${HYPODERMIC_INCLUDE_DIRS})
 
 configure_file(
-        ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/configuration.json   # source file
-        ${CMAKE_BINARY_DIR}/${PROJECT_NAME}/configuration.json  # destination
+        ${CMAKE_SOURCE_DIR}/${PROJECT_NAME}/configuration.json
+        ${CMAKE_BINARY_DIR}/${PROJECT_NAME}/configuration.json
         COPYONLY
 )

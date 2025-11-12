@@ -4,19 +4,14 @@
 #include "tournament_common/include/persistence/repository/MatchRepository.hpp"
 #include <pqxx/pqxx>
 
+using nlohmann::json;
 using namespace domain;
 
 namespace persistence {
 
-static Match rowToMatch(const pqxx::row& r) {
-  Match m;
-  m.id = r["id"].c_str();
-  m.tournamentId = r["tournament_id"].c_str();
-  m.homeTeamId = r["home_team_id"].c_str();
-  m.awayTeamId = r["away_team_id"].c_str();
-  m.round = r["round"].c_str(); // "regular" o "elimination"
-  if (!r["score_home"].is_null()) m.scoreHome = r["score_home"].as<int>();
-  if (!r["score_away"].is_null()) m.scoreAway = r["score_away"].as<int>();
+Match MatchRepository::fromRow(const std::string& id, const json& j) {
+  Match m = Match::fromJson(j);   // asume que tu dominio ya expone esto
+  if (m.id.empty()) m.id = id;    // por si no viene dentro del document
   return m;
 }
 
@@ -25,18 +20,31 @@ MatchRepository::ListByTournament(const std::string& tid,
                                   const std::optional<std::string>& filter) {
   pqxx::connection c(db_->connectionString());
   pqxx::work tx(c);
+
   std::string q =
-    "SELECT id,tournament_id,home_team_id,away_team_id,round,score_home,score_away "
-    "FROM matches WHERE tournament_id = " + tx.quote(tid);
+    "SELECT id, document::text "
+    "FROM matches "
+    "WHERE document->>'tournamentId' = " + tx.quote(tid);
+
   if (filter) {
-    if (*filter == "played")      q += " AND score_home IS NOT NULL AND score_away IS NOT NULL";
-    else if (*filter == "pending") q += " AND (score_home IS NULL OR score_away IS NULL)";
+    if (*filter == "played") {
+      q += " AND (document->'score'->>'home') IS NOT NULL "
+           "AND (document->'score'->>'visitor') IS NOT NULL";
+    } else if (*filter == "pending") {
+      q += " AND ((document->'score'->>'home') IS NULL "
+           "OR (document->'score'->>'visitor') IS NULL)";
+    }
   }
-  q += " ORDER BY id";
+  q += " ORDER BY created_at ASC";
+
   auto res = tx.exec(q);
   std::vector<Match> out;
   out.reserve(res.size());
-  for (const auto& r : res) out.push_back(rowToMatch(r));
+  for (const auto& r : res) {
+    const std::string id = r["id"].c_str();
+    json j = json::parse(r["document"].c_str());
+    out.push_back(fromRow(id, j));
+  }
   tx.commit();
   return out;
 }
@@ -46,10 +54,16 @@ MatchRepository::GetById(const std::string& tid, const std::string& mid) {
   pqxx::connection c(db_->connectionString());
   pqxx::work tx(c);
   auto res = tx.exec_params(
-    "SELECT id,tournament_id,home_team_id,away_team_id,round,score_home,score_away "
-    "FROM matches WHERE tournament_id=$1 AND id=$2", tid, mid);
+    "SELECT id, document::text "
+    "FROM matches "
+    "WHERE id=$1 AND document->>'tournamentId'=$2",
+    mid, tid);
+
   if (res.empty()) return std::nullopt;
-  return rowToMatch(res[0]);
+  const std::string id = res[0]["id"].c_str();
+  json j = json::parse(res[0]["document"].c_str());
+  tx.commit();
+  return fromRow(id, j);
 }
 
 std::expected<void, std::string>
@@ -58,8 +72,17 @@ MatchRepository::UpdateScore(const std::string& tid, const std::string& mid,
   try {
     pqxx::connection c(db_->connectionString());
     pqxx::work tx(c);
-    tx.exec_params("UPDATE matches SET score_home=$1, score_away=$2 WHERE tournament_id=$3 AND id=$4",
-                   h, v, tid, mid);
+
+    // crea o actualiza score dentro de document
+    tx.exec_params(
+      "UPDATE matches "
+      "SET document = jsonb_set( "
+      "      jsonb_set(document, '{score,home}',   to_jsonb($1::int), true), "
+      "      '{score,visitor}', to_jsonb($2::int), true), "
+      "    last_update_date = CURRENT_TIMESTAMP "
+      "WHERE id=$3 AND document->>'tournamentId'=$4",
+      h, v, mid, tid);
+
     tx.commit();
     return {};
   } catch (const std::exception& e) {
@@ -72,37 +95,38 @@ bool MatchRepository::ExistsPairing(const std::string& tid,
   pqxx::connection c(db_->connectionString());
   pqxx::work tx(c);
   auto res = tx.exec_params(
-    "SELECT 1 FROM matches WHERE tournament_id=$1 AND "
-    "((home_team_id=$2 AND away_team_id=$3) OR (home_team_id=$3 AND away_team_id=$2)) LIMIT 1",
+    "SELECT 1 FROM matches "
+    "WHERE document->>'tournamentId'=$1 AND "
+    "((document->>'homeTeamId'=$2 AND document->>'awayTeamId'=$3) "
+    " OR (document->>'homeTeamId'=$3 AND document->>'awayTeamId'=$2)) "
+    "LIMIT 1",
     tid, h, a);
   return !res.empty();
 }
 
 std::expected<std::string, std::string>
-MatchRepository::Create(const Match& m) {
-  try{
+MatchRepository::Create(const json& docJson) {
+  try {
     pqxx::connection c(db_->connectionString());
     pqxx::work tx(c);
     auto res = tx.exec_params(
-      "INSERT INTO matches (tournament_id,home_team_id,away_team_id,round) "
-      "VALUES ($1,$2,$3,$4) RETURNING id",
-      m.tournamentId, m.homeTeamId, m.awayTeamId, m.round);
+      "INSERT INTO matches(document) VALUES ($1::jsonb) RETURNING id",
+      docJson.dump());
+    std::string id = res[0][0].c_str();
     tx.commit();
-    return res[0][0].c_str();
-  } catch(const std::exception& e){
+    return id;
+  } catch (const std::exception& e) {
     return std::unexpected(e.what());
   }
 }
 
 std::expected<void, std::string>
-MatchRepository::CreateBulk(const std::vector<Match>& ms) {
+MatchRepository::CreateBulk(const std::vector<json>& docs) {
   try {
     pqxx::connection c(db_->connectionString());
     pqxx::work tx(c);
-    for (const auto& m : ms) {
-      tx.exec_params(
-        "INSERT INTO matches (tournament_id,home_team_id,away_team_id,round) VALUES ($1,$2,$3,$4)",
-        m.tournamentId, m.homeTeamId, m.awayTeamId, m.round);
+    for (const auto& j : docs) {
+      tx.exec_params("INSERT INTO matches(document) VALUES ($1::jsonb)", j.dump());
     }
     tx.commit();
     return {};
@@ -111,10 +135,10 @@ MatchRepository::CreateBulk(const std::vector<Match>& ms) {
   }
 }
 
-// Aqui lo dejo abstracto; conecta esto con tu capa ActiveMQ real.
 void MatchRepository::PublishEvent(const std::string& address, const std::string& payload) {
   (void)address; (void)payload;
-  // TODO: usa tu ConnectionManager/producer real para mandar a ActiveMQ.
+  // Conecta este metodo a tu producer de ActiveMQ (cms) cuando lo tengas a mano.
 }
 
 } // namespace persistence
+

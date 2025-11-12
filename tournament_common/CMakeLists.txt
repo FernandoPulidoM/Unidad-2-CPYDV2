@@ -1,14 +1,15 @@
 project(tournament_common)
 
 set(CMAKE_CXX_STANDARD 23)
+
 set(COMMON_SOURCES
         src/persistence/repository/TournamentRepository.cpp
         src/persistence/repository/GroupRepository.cpp
+        src/persistence/repository/MatchRepository.cpp
         ../tournament_services/tests/mocks/TeamDelegateMock.hpp
         ../tournament_services/tests/mocks/TeamRepositoryMock.h
         ../tournament_services/tests/mocks/GroupRepositoryMock.hpp
         ../tournament_services/tests/mocks/GroupDelegateMock.hpp
-        src/persistence/repository/MatchRepository.cpp
 )
 
 include_directories(include)
@@ -19,6 +20,7 @@ target_include_directories(${PROJECT_NAME}
         INTERFACE
         ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
         nlohmann_json::nlohmann_json
         libpqxx::pqxx
