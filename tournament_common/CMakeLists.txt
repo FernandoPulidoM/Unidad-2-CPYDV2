@@ -8,6 +8,7 @@ set(COMMON_SOURCES
         ../tournament_services/tests/mocks/TeamRepositoryMock.h
         ../tournament_services/tests/mocks/GroupRepositoryMock.hpp
         ../tournament_services/tests/mocks/GroupDelegateMock.hpp
+        src/persistence/repository/MatchRepository.cpp
 )
 
 include_directories(include)
