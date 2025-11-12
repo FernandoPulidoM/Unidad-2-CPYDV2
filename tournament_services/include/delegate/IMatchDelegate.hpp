@@ -1,32 +1,26 @@
 #pragma once
-#include <expected>
-#include <optional>
 #include <string>
+#include <optional>
 #include <vector>
-#include <nlohmann/json.hpp>
-#include "tournament_common/include/domain/Match.hpp"
+#include <expected>
 
-namespace services {
+#include "domain/Match.hpp"
 
-    struct Error {
-        int code;            // 404, 422, 500
-        std::string message; // detalle
-    };
+struct IMatchDelegate {
+    virtual ~IMatchDelegate() = default;
 
-    class IMatchDelegate {
-    public:
-        virtual ~IMatchDelegate() = default;
+    // Lista los matches de un torneo; filtro: "played" | "pending" | null
+    virtual std::vector<domain::Match>
+    List(const std::string& tournamentId,
+         const std::optional<std::string>& filter) = 0;
 
-        virtual std::vector<domain::Match>
-        List(const std::string& tournamentId,
-             const std::optional<std::string>& filterPlayedOrPending) = 0;
+    // Obtiene un match por id dentro de un torneo
+    virtual std::optional<domain::Match>
+    Get(const std::string& tournamentId, const std::string& matchId) = 0;
 
-        virtual std::optional<domain::Match>
-        Get(const std::string& tournamentId, const std::string& matchId) = 0;
-
-        virtual std::expected<void, Error>
-        UpdateScore(const std::string& tournamentId, const std::string& matchId,
-                    int home, int visitor) = 0;
-    };
-
-} // namespace services
+    // Actualiza el score (este metodo es camelCase)
+    virtual std::expected<void, std::string>
+    updateScore(const std::string& tournamentId,
+                const std::string& matchId,
+                int home, int visitor) = 0;
+};

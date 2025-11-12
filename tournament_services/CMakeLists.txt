@@ -15,6 +15,7 @@ set(SERVICES_SOURCES
         include/persistence/TournamentRepository.hpp
         include/delegate/MatchDelegate.hpp
         include/delegate/IMatchDelegate.hpp
+        src/delegate/MatchDelegate.cpp
 )
 
 include(CTest)

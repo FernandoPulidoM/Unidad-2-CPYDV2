@@ -4,8 +4,10 @@
 #include <optional>
 #include <vector>
 #include <nlohmann/json.hpp>
+#include <crow.h>
+
 #include "delegate/IMatchDelegate.hpp"
-#include "configuration/RouteDefinition.hpp" // donde esta REGISTER_ROUTE
+#include "configuration/RouteDefinition.hpp" // REGISTER_ROUTE
 
 namespace services {
 
@@ -15,29 +17,31 @@ namespace services {
           : delegate_(std::move(delegate)) {}
 
         // GET /tournaments/<string>/matches?showMatches=played|pending
-        nlohmann::json GetMatches(const std::string& tournamentId,
-                                  const std::optional<std::string>& showMatches);
+        // NOTA: el macro de Crow pasa req + params de ruta; los query params se leen desde req.
+        std::string GetMatches(const crow::request& req,
+                               const std::string& tournamentId);
 
         // GET /tournaments/<string>/matches/<string>
-        nlohmann::json GetMatch(const std::string& tournamentId,
-                                const std::string& matchId);
+        std::string GetMatch(const crow::request& req,
+                             const std::string& tournamentId,
+                             const std::string& matchId);
 
         // PATCH /tournaments/<string>/matches/<string>
-        // body: { "score": { "home": int, "visitor": int } }
-        int PatchScore(const std::string& tournamentId,
-                       const std::string& matchId,
-                       const nlohmann::json& body);
+        // body JSON: { "score": { "home": int, "visitor": int } }
+        int PatchScore(const crow::request& req,
+                       const std::string& tournamentId,
+                       const std::string& matchId);
 
     private:
         std::shared_ptr<IMatchDelegate> delegate_;
     };
 
-} // namespace services
+    // Rutas (dentro del namespace y sin calificador de namespace en el tipo)
+    REGISTER_ROUTE(MatchController, GetMatches,
+                   "/tournaments/<string>/matches", "GET"_method)
+    REGISTER_ROUTE(MatchController, GetMatch,
+                   "/tournaments/<string>/matches/<string>", "GET"_method)
+    REGISTER_ROUTE(MatchController, PatchScore,
+                   "/tournaments/<string>/matches/<string>", "PATCH"_method)
 
-// Rutas
-REGISTER_ROUTE(services::MatchController, GetMatches,
-               "/tournaments/<string>/matches", "GET"_method)
-REGISTER_ROUTE(services::MatchController, GetMatch,
-               "/tournaments/<string>/matches/<string>", "GET"_method)
-REGISTER_ROUTE(services::MatchController, PatchScore,
-               "/tournaments/<string>/matches/<string>", "PATCH"_method)
+} // namespace services

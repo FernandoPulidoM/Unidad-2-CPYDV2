@@ -1,24 +1,33 @@
+
 //
 // Created by HiramZ04 on 11/12/25.
 //
-#include "tournament_common/include/persistence/repository/MatchRepository.hpp"
+#include "persistence/repository/MatchRepository.hpp"
 #include <pqxx/pqxx>
 
 using nlohmann::json;
 using namespace domain;
 
+namespace {
+
+// usa los datos de tu script de postgres
+static const char* PG_CONN =
+  "host=127.0.0.1 port=5432 dbname=tournament_db user=tournament_admin password=password";
+
+} // anon namespace
+
 namespace persistence {
 
 Match MatchRepository::fromRow(const std::string& id, const json& j) {
-  Match m = Match::fromJson(j);   // asume que tu dominio ya expone esto
-  if (m.id.empty()) m.id = id;    // por si no viene dentro del document
+  Match m = Match::fromJson(j);
+  if (m.id.empty()) m.id = id;
   return m;
 }
 
 std::vector<Match>
 MatchRepository::ListByTournament(const std::string& tid,
                                   const std::optional<std::string>& filter) {
-  pqxx::connection c(db_->connectionString());
+  pqxx::connection c(PG_CONN);
   pqxx::work tx(c);
 
   std::string q =
@@ -51,7 +60,7 @@ MatchRepository::ListByTournament(const std::string& tid,
 
 std::optional<Match>
 MatchRepository::GetById(const std::string& tid, const std::string& mid) {
-  pqxx::connection c(db_->connectionString());
+  pqxx::connection c(PG_CONN);
   pqxx::work tx(c);
   auto res = tx.exec_params(
     "SELECT id, document::text "
@@ -70,10 +79,9 @@ std::expected<void, std::string>
 MatchRepository::UpdateScore(const std::string& tid, const std::string& mid,
                              int h, int v) {
   try {
-    pqxx::connection c(db_->connectionString());
+    pqxx::connection c(PG_CONN);
     pqxx::work tx(c);
 
-    // crea o actualiza score dentro de document
     tx.exec_params(
       "UPDATE matches "
       "SET document = jsonb_set( "
@@ -92,7 +100,7 @@ MatchRepository::UpdateScore(const std::string& tid, const std::string& mid,
 
 bool MatchRepository::ExistsPairing(const std::string& tid,
                                     const std::string& h, const std::string& a) {
-  pqxx::connection c(db_->connectionString());
+  pqxx::connection c(PG_CONN);
   pqxx::work tx(c);
   auto res = tx.exec_params(
     "SELECT 1 FROM matches "
@@ -107,7 +115,7 @@ bool MatchRepository::ExistsPairing(const std::string& tid,
 std::expected<std::string, std::string>
 MatchRepository::Create(const json& docJson) {
   try {
-    pqxx::connection c(db_->connectionString());
+    pqxx::connection c(PG_CONN);
     pqxx::work tx(c);
     auto res = tx.exec_params(
       "INSERT INTO matches(document) VALUES ($1::jsonb) RETURNING id",
@@ -123,7 +131,7 @@ MatchRepository::Create(const json& docJson) {
 std::expected<void, std::string>
 MatchRepository::CreateBulk(const std::vector<json>& docs) {
   try {
-    pqxx::connection c(db_->connectionString());
+    pqxx::connection c(PG_CONN);
     pqxx::work tx(c);
     for (const auto& j : docs) {
       tx.exec_params("INSERT INTO matches(document) VALUES ($1::jsonb)", j.dump());
@@ -135,10 +143,4 @@ MatchRepository::CreateBulk(const std::vector<json>& docs) {
   }
 }
 
-void MatchRepository::PublishEvent(const std::string& address, const std::string& payload) {
-  (void)address; (void)payload;
-  // Conecta este metodo a tu producer de ActiveMQ (cms) cuando lo tengas a mano.
-}
-
 } // namespace persistence
-
