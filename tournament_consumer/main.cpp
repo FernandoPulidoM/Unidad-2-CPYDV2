@@ -1,50 +1,37 @@
-//
-// Consumer main
-//
 #include <activemq/library/ActiveMQCPP.h>
 #include <thread>
 #include <chrono>
-#include <print>   // C++23 std::println
+#include <print>
 
 #include "configuration/ContainerSetup.hpp"
-
-// Nota:
-// Tu QueueMessageConsumer ya se resuelve desde el contenedor.
-// Aqui solo arrancamos listeners para las colas/topics que nos interesan.
+#include "cms/QueueMessageConsumer.hpp"
 
 int main() {
     activemq::library::ActiveMQCPP::initializeLibrary();
     {
-        std::println("before container");
         const auto container = config::containerSetup();
-        std::println("after container");
 
-        // Listener para eventos ya existentes
+        // listeners
         std::thread tTournamentCreated([&] {
-            auto listener = container->resolve<QueueMessageConsumer>();
-            listener->Start("tournament.created");
+            auto q = container->resolve<QueueMessageConsumer>();
+            q->Start("tournament.created");
         });
 
-        // NUEVO: se generan partidos RR cuando se agregan equipos
         std::thread tTeamAdded([&] {
-            auto listener = container->resolve<QueueMessageConsumer>();
-            listener->Start("group.team_added");      // o "tournament.team_added" si asi lo emites
+            auto q = container->resolve<QueueMessageConsumer>();
+            q->Start("group.team_added");
         });
 
-        // NUEVO: al registrar marcador, avanzar fase / crear llaves
         std::thread tScoreRecorded([&] {
-            auto listener = container->resolve<QueueMessageConsumer>();
-            listener->Start("match.score_recorded");
+            auto q = container->resolve<QueueMessageConsumer>();
+            q->Start("match.score_recorded");
         });
 
-        // Mantener el proceso vivo
         tTournamentCreated.detach();
         tTeamAdded.detach();
         tScoreRecorded.detach();
 
-        while (true) {
-            std::this_thread::sleep_for(std::chrono::seconds(30));
-        }
+        for (;;) std::this_thread::sleep_for(std::chrono::seconds(30));
     }
     activemq::library::ActiveMQCPP::shutdownLibrary();
     return 0;

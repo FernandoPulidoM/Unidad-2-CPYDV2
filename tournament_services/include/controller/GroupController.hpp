@@ -5,7 +5,6 @@
 #include <string>
 #include <memory>
 #include <crow.h>
-
 #include "delegate/IGroupDelegate.hpp"
 
 class GroupController {
@@ -19,6 +18,8 @@ public:
     crow::response CreateGroup(const crow::request& request, const std::string& tournamentId);
     crow::response UpdateGroup(const crow::request& request, const std::string& tournamentId, const std::string& groupId);
     crow::response DeleteGroup(const std::string& tournamentId, const std::string& groupId);
+
+    // ARREGLADA
     crow::response UpdateTeams(const crow::request& request, const std::string& tournamentId, const std::string& groupId);
 };
 

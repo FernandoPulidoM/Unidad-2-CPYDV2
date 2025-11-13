@@ -1,6 +1,3 @@
-//
-// Created by tomas on 8/22/25.
-//
 #ifndef RESTAPI_CONTAINER_SETUP_HPP
 #define RESTAPI_CONTAINER_SETUP_HPP
 
@@ -16,12 +13,12 @@
 #include "cms/QueueMessageProducer.hpp"
 #include "cms/QueueResolver.hpp"
 
-// ===== Repositories =====
+// ===== Repos =====
 #include "persistence/repository/IRepository.hpp"
-#include "persistence/repository/TeamRepository.hpp"
-#include "persistence/repository/TournamentRepository.hpp"
-#include "persistence/repository/GroupRepository.hpp"
-#include "persistence/repository/MatchRepository.hpp"
+#include "persistence/repository/TeamRepository.hpp"        // persistence::TeamRepository
+#include "persistence/repository/TournamentRepository.hpp"  // (parece estar en global)
+#include "persistence/repository/GroupRepository.hpp"       // (parece estar en global)
+#include "persistence/repository/MatchRepository.hpp"       // persistence::MatchRepository
 
 // ===== Delegates =====
 #include "delegate/TeamDelegate.hpp"
@@ -42,7 +39,7 @@ namespace config {
 inline std::shared_ptr<Hypodermic::Container> containerSetup() {
     Hypodermic::ContainerBuilder builder;
 
-    // --- Cargar configuracion ---
+    // --- Configuracion ---
     std::ifstream file("configuration.json");
     nlohmann::json configuration;
     file >> configuration;
@@ -64,16 +61,19 @@ inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         .singleInstance();
 
     builder.registerType<QueueMessageProducer>().named("tournamentAddTeamQueue");
+
     builder.registerType<QueueResolver>()
         .as<IResolver<IQueueMessageProducer>>()
         .named("queueResolver")
         .singleInstance();
 
     // --- Repos ---
-    builder.registerType<TeamRepository>()
-        .as<IRepository<domain::Team, std::string_view>>()
+    // TeamRepository SI esta en namespace persistence
+    builder.registerType<persistence::TeamRepository>()
+        .as<IRepository<domain::Team, std::string_view>>()   // interfaz en global
         .singleInstance();
 
+    // GroupRepository y TournamentRepository aparentan estar en el global namespace
     builder.registerType<GroupRepository>()
         .as<IGroupRepository>()
         .singleInstance();
@@ -82,9 +82,8 @@ inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         .as<IRepository<domain::Tournament, std::string>>()
         .singleInstance();
 
-    // MatchRepository no tiene interfaz; registralo como instancia (self)
+    // MatchRepository sin interfaz: instancia concreta
     builder.registerInstance(std::make_shared<persistence::MatchRepository>(postgressConnection));
-
 
     // --- Delegates ---
     builder.registerType<TeamDelegate>()
@@ -99,7 +98,6 @@ inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         .as<ITournamentDelegate>()
         .singleInstance();
 
-    // IMatchDelegate -> MatchDelegate
     builder.registerType<services::MatchDelegate>()
         .as<IMatchDelegate>()
         .singleInstance();

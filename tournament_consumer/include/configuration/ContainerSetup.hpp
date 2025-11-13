@@ -1,56 +1,33 @@
-//
-// Created by tomas on 9/7/25.
-//
-
-#ifndef TOURNAMENTS_CONSUMER_CONTAINER_SETUP_HPP
-#define TOURNAMENTS_CONSUMER_CONTAINER_SETUP_HPP
-
-#include <Hypodermic/Hypodermic.h>
-#include <fstream>
-#include <nlohmann/json.hpp>
+// tournament_consumer/include/configuration/ContainerSetup.hpp
+#pragma once
 #include <memory>
-#include <print>
+#include <Hypodermic/Hypodermic.h>
 
-#include "configuration/DatabaseConfiguration.hpp"
-#include "cms/ConnectionManager.hpp"
-#include "persistence/repository/IRepository.hpp"
+#include "persistence/repository/MatchRepository.hpp"
 #include "persistence/repository/TeamRepository.hpp"
-#include "persistence/configuration/PostgresConnectionProvider.hpp"
-#include "persistence/repository/TournamentRepository.hpp"
-#include "cms/QueueMessageConsumer.hpp"
+#include "processors/TeamAddedEventProcessor.hpp"
+#include "processors/ScoreRecordedEventProcessor.hpp"
 
 namespace config {
+
     inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         Hypodermic::ContainerBuilder builder;
 
-        std::ifstream file("configuration.json");
-        nlohmann::json configuration;
-        file >> configuration;
+        // Registrar como tipos concretos (self). NO uses .as<T>() con el mismo tipo.
+        builder.registerType<persistence::MatchRepository>()
+               .singleInstance();
 
-        std::shared_ptr<PostgresConnectionProvider> postgressConnection = std::make_shared<PostgresConnectionProvider>(configuration["databaseConfig"]["connectionString"].get<std::string>(), configuration["databaseConfig"]["poolSize"].get<size_t>());
-        builder.registerInstance(postgressConnection).as<IDbConnectionProvider>();
+        builder.registerType<persistence::TeamRepository>()
+               .singleInstance();
 
-        builder.registerType<ConnectionManager>()
-            .onActivated([configuration](Hypodermic::ComponentContext& context, const std::shared_ptr<ConnectionManager>& instance) {
-                instance->initialize(configuration["activemq"]["broker-url"].get<std::string>());
-            })
-            .singleInstance();
+        // Processors (Hypodermic inyecta por ctor)
+        builder.registerType<consumers::TeamAddedEventProcessor>()
+               .singleInstance();
 
-        builder.registerType<QueueMessageConsumer>();
-            // .onActivated([](Hypodermic::ComponentContext& , const std::shared_ptr<QueueMessageConsumer>& instance) {
-            //     instance->QueueName() = "tournament.created";
-            //     instance->start();
-            // }).singleInstance();
-
-        // builder.registerType<QueueMessageProducer>().named("tournamentAddTeamQueue");
-        // builder.registerType<QueueResolver>().as<IResolver<IQueueMessageProducer> >().named("queueResolver").
-        //         singleInstance();
-
-        builder.registerType<TeamRepository>().as<IRepository<domain::Team, std::string_view>>().singleInstance();
-
-        builder.registerType<TournamentRepository>().as<IRepository<domain::Tournament, std::string>>().singleInstance();
+        builder.registerType<consumers::ScoreRecordedEventProcessor>()
+               .singleInstance();
 
         return builder.build();
     }
-}
-#endif //TOURNAMENTS_CONSUMER_CONTAINER_SETUP_HPP
+
+} // namespace config
