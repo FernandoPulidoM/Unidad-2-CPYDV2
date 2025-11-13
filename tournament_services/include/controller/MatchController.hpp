@@ -2,12 +2,10 @@
 #include <memory>
 #include <string>
 #include <optional>
-#include <vector>
 #include <nlohmann/json.hpp>
 #include <crow.h>
-
 #include "delegate/IMatchDelegate.hpp"
-#include "configuration/RouteDefinition.hpp" // REGISTER_ROUTE
+#include "configuration/RouteDefinition.hpp"  // REGISTER_ROUTE
 
 namespace services {
 
@@ -17,7 +15,6 @@ namespace services {
           : delegate_(std::move(delegate)) {}
 
         // GET /tournaments/<string>/matches?showMatches=played|pending
-        // NOTA: el macro de Crow pasa req + params de ruta; los query params se leen desde req.
         std::string GetMatches(const crow::request& req,
                                const std::string& tournamentId);
 
@@ -27,7 +24,7 @@ namespace services {
                              const std::string& matchId);
 
         // PATCH /tournaments/<string>/matches/<string>
-        // body JSON: { "score": { "home": int, "visitor": int } }
+        // body: { "score": { "home": int, "visitor": int } }
         int PatchScore(const crow::request& req,
                        const std::string& tournamentId,
                        const std::string& matchId);
@@ -36,7 +33,7 @@ namespace services {
         std::shared_ptr<IMatchDelegate> delegate_;
     };
 
-    // Rutas (dentro del namespace y sin calificador de namespace en el tipo)
+    // ---- Rutas (OJO: dentro del namespace y sin calificar) ----
     REGISTER_ROUTE(MatchController, GetMatches,
                    "/tournaments/<string>/matches", "GET"_method)
     REGISTER_ROUTE(MatchController, GetMatch,
@@ -44,4 +41,4 @@ namespace services {
     REGISTER_ROUTE(MatchController, PatchScore,
                    "/tournaments/<string>/matches/<string>", "PATCH"_method)
 
-} // namespace services
+    } // namespace services

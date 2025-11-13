@@ -44,7 +44,7 @@ MatchRepository::ListByTournament(const std::string& tid,
            "OR (document->'score'->>'visitor') IS NULL)";
     }
   }
-  q += " ORDER BY created_at ASC";
+
 
   auto res = tx.exec(q);
   std::vector<Match> out;

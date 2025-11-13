@@ -30,55 +30,54 @@ json matchToJson(const domain::Match& m) {
 
 namespace services {
 
-    std::string MatchController::GetMatches(const crow::request& req,
-                                            const std::string& tournamentId) {
-        // Leer ?showMatches=played|pending del querystring
-        std::optional<std::string> show;
-        if (const char* v = req.url_params.get("showMatches")) {
-            show = std::string(v);
-        }
-
-        // OJO: IMatchDelegate expone List(...) en PascalCase
-        auto list = delegate_->List(tournamentId, show);
-
-        json out = json::array();
-        for (const auto& m : list) out.push_back(matchToJson(m));
-        return out.dump();
+std::string MatchController::GetMatches(const crow::request& req,
+                                        const std::string& tournamentId) {
+    // Leer ?showMatches=played|pending del querystring
+    std::optional<std::string> show;
+    if (const char* v = req.url_params.get("showMatches")) {
+        show = std::string(v);
     }
 
-    std::string MatchController::GetMatch(const crow::request& /*req*/,
-                                          const std::string& tournamentId,
-                                          const std::string& matchId) {
-        // OJO: IMatchDelegate expone Get(...) en PascalCase
-        auto m = delegate_->Get(tournamentId, matchId);
-        if (!m) {
-            // Tu capa de rutas traduce std::runtime_error("404") -> HTTP 404
-            throw std::runtime_error("404");
-        }
-        return matchToJson(*m).dump();
+    // La interfaz expone List(...) en PascalCase
+    auto list = delegate_->List(tournamentId, show);
+
+    json out = json::array();
+    for (const auto& m : list) out.push_back(matchToJson(m));
+    return out.dump();
+}
+
+std::string MatchController::GetMatch(const crow::request& /*req*/,
+                                      const std::string& tournamentId,
+                                      const std::string& matchId) {
+    auto m = delegate_->Get(tournamentId, matchId);
+    if (!m) {
+        // Tu capa de rutas traduce std::runtime_error("404") -> HTTP 404
+        throw std::runtime_error("404");
     }
+    return matchToJson(*m).dump();
+}
 
-    int MatchController::PatchScore(const crow::request& req,
-                                    const std::string& tournamentId,
-                                    const std::string& matchId) {
-        // Parsear body
-        json body = json::parse(req.body, /*callback*/nullptr, /*allow_exceptions*/false);
-        if (body.is_discarded() || !body.contains("score") || !body["score"].is_object())
-            throw std::runtime_error("422");
+int MatchController::PatchScore(const crow::request& req,
+                                const std::string& tournamentId,
+                                const std::string& matchId) {
+    // Parsear body
+    json body = json::parse(req.body, /*callback*/nullptr, /*allow_exceptions*/false);
+    if (body.is_discarded() || !body.contains("score") || !body["score"].is_object())
+        throw std::runtime_error("422");
 
-        const auto& score = body["score"];
-        if (!score.contains("home") || !score.contains("visitor"))
-            throw std::runtime_error("422");
+    const auto& score = body["score"];
+    if (!score.contains("home") || !score.contains("visitor"))
+        throw std::runtime_error("422");
 
-        int home    = score["home"].get<int>();
-        int visitor = score["visitor"].get<int>();
+    int home    = score["home"].get<int>();
+    int visitor = score["visitor"].get<int>();
 
-        // OJO: segun los errores previos, este metodo es camelCase: updateScore
-        auto result = delegate_->updateScore(tournamentId, matchId, home, visitor);
-        if (!result.has_value()) {
-            throw std::runtime_error("500");
-        }
-        return 204; // No Content
+    // Este metodo es camelCase en el delegate
+    auto result = delegate_->updateScore(tournamentId, matchId, home, visitor);
+    if (!result.has_value()) {
+        throw std::runtime_error("500");
     }
+    return 204; // No Content
+}
 
 } // namespace services
