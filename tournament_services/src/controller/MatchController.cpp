@@ -3,13 +3,13 @@
 //
 #include "controller/MatchController.hpp"
 #include "domain/Match.hpp"
+#include "configuration/RouteDefinition.hpp"
 #include <stdexcept>
 
 using nlohmann::json;
 
 namespace {
 
-// Convierte domain::Match a JSON sin tocar el dominio.
 json matchToJson(const domain::Match& m) {
     json j;
     j["id"]           = m.id;
@@ -32,13 +32,11 @@ namespace services {
 
 std::string MatchController::GetMatches(const crow::request& req,
                                         const std::string& tournamentId) {
-    // Leer ?showMatches=played|pending del querystring
     std::optional<std::string> show;
     if (const char* v = req.url_params.get("showMatches")) {
         show = std::string(v);
     }
 
-    // La interfaz expone List(...) en PascalCase
     auto list = delegate_->List(tournamentId, show);
 
     json out = json::array();
@@ -50,18 +48,14 @@ std::string MatchController::GetMatch(const crow::request& /*req*/,
                                       const std::string& tournamentId,
                                       const std::string& matchId) {
     auto m = delegate_->Get(tournamentId, matchId);
-    if (!m) {
-        // Tu capa de rutas traduce std::runtime_error("404") -> HTTP 404
-        throw std::runtime_error("404");
-    }
+    if (!m) throw std::runtime_error("404");
     return matchToJson(*m).dump();
 }
 
 int MatchController::PatchScore(const crow::request& req,
                                 const std::string& tournamentId,
                                 const std::string& matchId) {
-    // Parsear body
-    json body = json::parse(req.body, /*callback*/nullptr, /*allow_exceptions*/false);
+    json body = json::parse(req.body, nullptr, false);
     if (body.is_discarded() || !body.contains("score") || !body["score"].is_object())
         throw std::runtime_error("422");
 
@@ -72,12 +66,19 @@ int MatchController::PatchScore(const crow::request& req,
     int home    = score["home"].get<int>();
     int visitor = score["visitor"].get<int>();
 
-    // Este metodo es camelCase en el delegate
     auto result = delegate_->updateScore(tournamentId, matchId, home, visitor);
-    if (!result.has_value()) {
-        throw std::runtime_error("500");
-    }
-    return 204; // No Content
+    if (!result.has_value()) throw std::runtime_error("500");
+    return 204;
 }
 
+} // namespace services
+
+// Rutas: definirlas en UN SOLO TU (este .cpp)
+namespace services {
+REGISTER_ROUTE(MatchController, GetMatches,
+               "/tournaments/<string>/matches", "GET"_method)
+REGISTER_ROUTE(MatchController, GetMatch,
+               "/tournaments/<string>/matches/<string>", "GET"_method)
+REGISTER_ROUTE(MatchController, PatchScore,
+               "/tournaments/<string>/matches/<string>", "PATCH"_method)
 } // namespace services

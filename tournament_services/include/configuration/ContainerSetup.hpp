@@ -83,7 +83,8 @@ inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         .singleInstance();
 
     // MatchRepository no tiene interfaz; registralo como instancia (self)
-    builder.registerInstance(std::make_shared<persistence::MatchRepository>());
+    builder.registerInstance(std::make_shared<persistence::MatchRepository>(postgressConnection));
+
 
     // --- Delegates ---
     builder.registerType<TeamDelegate>()
