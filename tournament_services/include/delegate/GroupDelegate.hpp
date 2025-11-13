@@ -5,7 +5,7 @@
 #include <string_view>
 #include <memory>
 #include <expected>
-
+#include <format>
 #include "IGroupDelegate.hpp"
 
 class GroupDelegate : public IGroupDelegate{
@@ -110,13 +110,13 @@ std::expected<void, std::string> GroupDelegate::UpdateTeams(const std::string_vi
     }
     for (const auto& team : teams) {
         if (const auto groupTeams = groupRepository->FindByTournamentIdAndTeamId(tournamentId, team.Id)) {
-            return std::unexpected(std::format("Team {} already exist", team.Id));
+            return std::unexpected("Team " + team.Id + " already exist");
         }
     }
     for (const auto& team : teams) {
         const auto persistedTeam = teamRepository->ReadById(team.Id);
         if (persistedTeam == nullptr) {
-            return std::unexpected(std::format("Team {} doesn't exist", team.Id));
+            return std::unexpected("Team " + team.Id + " doesn't exist");
         }
         groupRepository->UpdateGroupAddTeam(groupId, persistedTeam);
     }

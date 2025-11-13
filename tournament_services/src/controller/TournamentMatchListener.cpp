@@ -1,9 +1,10 @@
 //
 // Created by fmendivil on 10/22/25.
 //
-#include "listener/TournamentMatchListener.hpp"
+#include "../../../tournament_common/include/domain/TournamentMatchListener.hpp"
 #include <iostream>
 #include <regex>
+#include <iomanip>  // ← AGREGAR ESTO para std::setw
 
 TournamentMatchListener::TournamentMatchListener(
     std::shared_ptr<QueueMessageConsumer> consumer
@@ -23,7 +24,9 @@ void TournamentMatchListener::Start() {
         }
     });
 
-    consumer->Start();
+
+
+    consumer->Start("tournament.match.events");
 }
 
 void TournamentMatchListener::OnMatchCompleted(const std::string& message) {

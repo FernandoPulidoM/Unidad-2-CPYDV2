@@ -5,7 +5,7 @@
 #include <map>
 #include "IMatchDelegate.hpp"
 #include "persistence/repository/IRepository.hpp"
-#include "cms/QueueMessageProducer.hpp"
+#include "../cms/QueueMessageProducer.hpp"
 
 class MatchDelegate : public IMatchDelegate {
     std::shared_ptr<IRepository<domain::Match, std::string>> matchRepository;

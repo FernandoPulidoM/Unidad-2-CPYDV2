@@ -78,6 +78,17 @@ PREPARE insert_match AS
 PREPARE select_match_by_id AS
 SELECT id, document FROM matches WHERE id = $1::uuid;
 
+PREPARE update_group_add_team AS
+UPDATE groups
+SET document = jsonb_set(
+        document,
+        '{teams}',
+        COALESCE(document->'teams', '[]'::jsonb) || $2::jsonb,
+        true
+               ),
+    last_update_date = now()
+WHERE id = $1::uuid;
+
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO tournament_svc;
 GRANT DELETE ON ALL TABLES IN SCHEMA public TO tournament_svc;
 GRANT UPDATE ON ALL TABLES IN SCHEMA public TO tournament_svc;

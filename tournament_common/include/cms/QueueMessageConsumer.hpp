@@ -11,7 +11,8 @@
 #include <thread>
 #include <cms/MessageConsumer.h>
 #include <cms/Session.h>
-#include <print>
+#include <functional>
+#include <iostream>
 
 #include "cms/ConnectionManager.hpp"
 
@@ -22,6 +23,8 @@ class QueueMessageConsumer : public cms::MessageListener {
     // std::shared_ptr<cms::Connection> connection;
     std::shared_ptr<cms::Session> session;
     std::shared_ptr<cms::MessageConsumer> messageConsumer;
+    // ← AGREGAR ESTO: callback para manejar mensajes
+    std::function<void(const std::string&)> messageHandler;
 
     // void readMessage();
 public:
@@ -29,11 +32,17 @@ public:
     ~QueueMessageConsumer();
     void Start(const std::string_view & queueName);
     void Stop();
+
+    // ← AGREGAR ESTO: método para registrar el handler
+    void SetMessageHandler(std::function<void(const std::string&)> handler) {
+        messageHandler = std::move(handler);
+    }
+
     virtual void onMessage(const cms::Message* message);
 };
 
 inline QueueMessageConsumer::QueueMessageConsumer(const std::shared_ptr<ConnectionManager>& connectionManager) : connectionManager(connectionManager) {
-    std::print("Created QueueMessageConsumer");
+    std::cout << "Created QueueMessageConsumer";
 }
 
 inline QueueMessageConsumer::~QueueMessageConsumer() {
@@ -53,7 +62,7 @@ inline void QueueMessageConsumer::Start(const std::string_view& queueName) {
             std::unique_ptr<cms::Message> message(consumer->receive(1500));
             if (message) {
                 if (auto text = dynamic_cast<cms::TextMessage*>(message.get())) {
-                    std::print("message consumed: {}", text->getText());
+                    std::cout << "message consumed: {}" << text->getText() ;
                 }
             }
         }
@@ -73,7 +82,19 @@ inline void QueueMessageConsumer::Stop() {
 }
 
 inline void QueueMessageConsumer::onMessage(const cms::Message* message) {
+    try {
+        if (auto textMsg = dynamic_cast<const cms::TextMessage*>(message)) {
+            std::string text = textMsg->getText();
+            std::cout << "Message received: {}\n" << text;
 
+            // ← LLAMAR AL HANDLER SI EXISTE
+            if (messageHandler) {
+                messageHandler(text);
+            }
+        }
+    } catch (const cms::CMSException& e) {
+        std::cout << "Error processing message: {}\n" << e.what();
+    }
 }
 
 // inline void QueueMessageConsumer::readMessage() {
@@ -88,7 +109,7 @@ inline void QueueMessageConsumer::onMessage(const cms::Message* message) {
 //             std::unique_ptr<cms::Message> message(consumer->receive(1000));
 //             if (message) {
 //                 if (auto text = dynamic_cast<cms::TextMessage*>(message.get())) {
-//                     std::print("message consumed: {}", text->getText());
+//                     std::cout << "message consumed: {}" << text->getText();
 //                 }
 //             }
 //         }
