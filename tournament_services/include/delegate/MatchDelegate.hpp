@@ -3,7 +3,7 @@
 #include <optional>
 #include <vector>
 #include <expected>
-#include <iostream>  // Para logging
+#include <iostream>
 
 #include "delegate/IMatchDelegate.hpp"
 #include "domain/IMatchStrategy.hpp"
@@ -40,12 +40,10 @@ public:
     updateScore(const std::string& tournamentId,
                 const std::string& matchId, int home, int visitor) override {
 
-        // Log para debugging
         std::cout << "[MatchDelegate] Updating score for match " << matchId
                   << " in tournament " << tournamentId << std::endl;
         std::cout << "[MatchDelegate] Score: " << home << "-" << visitor << std::endl;
 
-        // 1. Verificar que el match existe
         auto match = matchRepo_->GetById(tournamentId, matchId);
         if (!match.has_value()) {
             std::cerr << "[MatchDelegate] Match not found!" << std::endl;
@@ -55,13 +53,11 @@ public:
         std::cout << "[MatchDelegate] Match found, current status: "
                   << match->status << std::endl;
 
-        // 2. Validar que el partido está pendiente (opcional)
         if (match->status == "played") {
             std::cerr << "[MatchDelegate] Match already played!" << std::endl;
             return std::unexpected("Match already has a score");
         }
 
-        // 3. Actualizar el score
         auto result = matchRepo_->UpdateScore(tournamentId, matchId, home, visitor);
 
         if (result.has_value()) {
@@ -78,7 +74,6 @@ public:
         std::cout << "[MatchDelegate] Generating matches for tournament "
                   << tournamentId << std::endl;
 
-        // 1. Obtener todos los grupos del torneo
         auto groups = groupRepo_->FindByTournamentId(tournamentId);
         if (groups.empty()) {
             std::cerr << "[MatchDelegate] No groups found!" << std::endl;
@@ -87,7 +82,6 @@ public:
 
         std::cout << "[MatchDelegate] Found " << groups.size() << " groups" << std::endl;
 
-        // 2. Usar la estrategia para generar partidos
         auto matches = strategy_->GenerateMatches(tournamentId, groups);
         if (!matches.has_value()) {
             std::cerr << "[MatchDelegate] Strategy failed: " << matches.error() << std::endl;
@@ -96,7 +90,6 @@ public:
 
         std::cout << "[MatchDelegate] Generated " << matches->size() << " matches" << std::endl;
 
-        // 3. Convertir a JSON y guardar en bulk
         std::vector<nlohmann::json> matchJsons;
         matchJsons.reserve(matches->size());
 
@@ -122,26 +115,37 @@ public:
         return result;
     }
 
-    // MatchDelegate.hpp - Agregar método
+    // NUEVO: Obtener estado del torneo
     std::expected<nlohmann::json, std::string>
-    GetTournamentStatus(const std::string& tournamentId) {
-        auto matches = matchRepo_->ListByTournament(tournamentId, std::nullopt);
+    GetTournamentStatus(const std::string& tournamentId) override {
+        try {
+            auto matches = matchRepo_->ListByTournament(tournamentId, std::nullopt);
 
-        int total = matches.size();
-        int played = 0;
-        int pending = 0;
+            int total = matches.size();
+            int played = 0;
+            int pending = 0;
 
-        for (const auto& m : matches) {
-            if (m.status == "played") played++;
-            else pending++;
+            for (const auto& m : matches) {
+                if (m.status == "played") played++;
+                else pending++;
+            }
+
+            nlohmann::json status;
+            status["totalMatches"] = total;
+            status["playedMatches"] = played;
+            status["pendingMatches"] = pending;
+            status["groupStageComplete"] = (pending == 0 && total > 0);
+
+            return status;
+        } catch (const std::exception& e) {
+            return std::unexpected(std::string("Error getting status: ") + e.what());
         }
+    }
 
-        nlohmann::json status;
-        status["totalMatches"] = total;
-        status["playedMatches"] = played;
-        status["pendingMatches"] = pending;
-        status["groupStageComplete"] = (pending == 0 && total > 0);
-
-        return status;
+    // STUB: Implementación básica de GetGroupStandings (para compilar)
+    std::expected<std::vector<TeamStanding>, std::string>
+    GetGroupStandings(const std::string& tournamentId, const std::string& groupId) override {
+        // TODO: Implementar cálculo de tabla de posiciones
+        return std::unexpected("Not implemented yet");
     }
 };

@@ -13,33 +13,26 @@ namespace services {
         explicit MatchController(std::shared_ptr<IMatchDelegate> delegate)
             : delegate_(std::move(delegate)) {}
 
-        // GET /tournaments/<string>/matches?showMatches=played|pending
         std::string GetMatches(const crow::request& req,
                                const std::string& tournamentId);
 
-        // GET /tournaments/<string>/matches/<string>
         std::string GetMatch(const crow::request& req,
                              const std::string& tournamentId,
                              const std::string& matchId);
 
-        // PATCH /tournaments/<string>/matches/<string>
-        // body: { "score": { "home": int, "visitor": int } }
         int PatchScore(const crow::request& req,
                        const std::string& tournamentId,
                        const std::string& matchId);
 
-        int GenerateMatches(const crow::request& req, const std::string& tournamentId);
+        int GenerateMatches(const crow::request& req,
+                           const std::string& tournamentId);
 
-
-
-        // MatchController.hpp
+        // NUEVO: Agregar declaración
         std::string GetTournamentStatus(const crow::request& req,
                                         const std::string& tournamentId);
 
     private:
         std::shared_ptr<IMatchDelegate> delegate_;
     };
-
-
 
 } // namespace services
