@@ -28,8 +28,18 @@ namespace services {
                        const std::string& tournamentId,
                        const std::string& matchId);
 
+        int GenerateMatches(const crow::request& req, const std::string& tournamentId);
+
+
+
+        // MatchController.hpp
+        std::string GetTournamentStatus(const crow::request& req,
+                                        const std::string& tournamentId);
+
     private:
         std::shared_ptr<IMatchDelegate> delegate_;
     };
+
+
 
 } // namespace services

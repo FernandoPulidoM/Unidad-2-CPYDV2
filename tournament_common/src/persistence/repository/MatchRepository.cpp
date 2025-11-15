@@ -75,26 +75,42 @@ MatchRepository::GetById(const std::string& tid, const std::string& mid) {
   return fromRow(id, j);
 }
 
-std::expected<void, std::string>
-MatchRepository::UpdateScore(const std::string& tid, const std::string& mid,
-                             int h, int v) {
+  std::expected<void, std::string>
+  MatchRepository::UpdateScore(const std::string& tid, const std::string& mid,
+                               int h, int v) {
   try {
     pqxx::connection c(PG_CONN);
     pqxx::work tx(c);
 
-    tx.exec_params(
+    // IMPORTANTE: Verificar que el match existe primero
+    auto checkResult = tx.exec_params(
+      "SELECT id FROM matches WHERE id=$1 AND document->>'tournamentId'=$2",
+      mid, tid);
+
+    if (checkResult.empty()) {
+      return std::unexpected("Match not found");
+    }
+
+    // Actualizar score Y status
+    auto updateResult = tx.exec_params(
       "UPDATE matches "
       "SET document = jsonb_set( "
-      "      jsonb_set(document, '{score,home}',   to_jsonb($1::int), true), "
-      "      '{score,visitor}', to_jsonb($2::int), true), "
+      "      jsonb_set( "
+      "        jsonb_set(document, '{score,home}', to_jsonb($1::int), true), "
+      "        '{score,visitor}', to_jsonb($2::int), true), "
+      "      '{status}', '\"played\"'::jsonb, true), "
       "    last_update_date = CURRENT_TIMESTAMP "
       "WHERE id=$3 AND document->>'tournamentId'=$4",
       h, v, mid, tid);
 
+    if (updateResult.affected_rows() == 0) {
+      return std::unexpected("Failed to update match");
+    }
+
     tx.commit();
     return {};
   } catch (const std::exception& e) {
-    return std::unexpected(e.what());
+    return std::unexpected(std::string("Database error: ") + e.what());
   }
 }
 

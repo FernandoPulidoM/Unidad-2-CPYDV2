@@ -52,26 +52,62 @@ std::string MatchController::GetMatch(const crow::request& /*req*/,
     return matchToJson(*m).dump();
 }
 
-int MatchController::PatchScore(const crow::request& req,
-                                const std::string& tournamentId,
-                                const std::string& matchId) {
+    int MatchController::PatchScore(const crow::request& req,
+                                    const std::string& tournamentId,
+                                    const std::string& matchId) {
+    // Log para debugging
+    std::cout << "PATCH Score - Tournament: " << tournamentId
+              << ", Match: " << matchId << std::endl;
+
     json body = json::parse(req.body, nullptr, false);
-    if (body.is_discarded() || !body.contains("score") || !body["score"].is_object())
+    if (body.is_discarded() || !body.contains("score") || !body["score"].is_object()) {
+        std::cerr << "Invalid JSON body" << std::endl;
         throw std::runtime_error("422");
+    }
 
     const auto& score = body["score"];
-    if (!score.contains("home") || !score.contains("visitor"))
+    if (!score.contains("home") || !score.contains("visitor")) {
+        std::cerr << "Missing home or visitor score" << std::endl;
         throw std::runtime_error("422");
+    }
 
     int home    = score["home"].get<int>();
     int visitor = score["visitor"].get<int>();
 
+    std::cout << "Updating score: " << home << "-" << visitor << std::endl;
+
     auto result = delegate_->updateScore(tournamentId, matchId, home, visitor);
-    if (!result.has_value()) throw std::runtime_error("500");
+    if (!result.has_value()) {
+        std::cerr << "Update failed: " << result.error() << std::endl;
+        throw std::runtime_error("500: " + result.error());
+    }
+
+    std::cout << "Score updated successfully" << std::endl;
     return 204;
 }
 
+    // MatchController.cpp
+    std::string MatchController::GetTournamentStatus(const crow::request&,
+                                                     const std::string& tid) {
+    auto status = delegate_->GetTournamentStatus(tid);
+    if (!status.has_value()) {
+        throw std::runtime_error("500");
+    }
+    return status->dump();
+}
+
+    int MatchController::GenerateMatches(const crow::request& /*req*/,
+                                     const std::string& tournamentId) {
+    auto result = delegate_->GenerateMatchesForTournament(tournamentId);
+    if (!result.has_value()) {
+        throw std::runtime_error("500: " + result.error());
+    }
+    return 201; // Created
+}
+
 } // namespace services
+
+
 
 // Rutas: definirlas en UN SOLO TU (este .cpp)
 namespace services {
@@ -81,4 +117,11 @@ REGISTER_ROUTE(MatchController, GetMatch,
                "/tournaments/<string>/matches/<string>", "GET"_method)
 REGISTER_ROUTE(MatchController, PatchScore,
                "/tournaments/<string>/matches/<string>", "PATCH"_method)
+
+    REGISTER_ROUTE(MatchController, GenerateMatches,
+               "/tournaments/<string>/matches/generate", "POST"_method)
+
+    // Registrar ruta
+ REGISTER_ROUTE(MatchController, GetTournamentStatus,
+                "/tournaments/<string>/status", "GET"_method)
 } // namespace services

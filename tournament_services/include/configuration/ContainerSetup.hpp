@@ -34,6 +34,10 @@
 #include "controller/GroupController.hpp"
 #include "controller/MatchController.hpp"
 
+// ===== Match Strategy =====
+#include "domain/IMatchStrategy.hpp"
+#include "domain/RoundRobinStragety.hpp"
+
 namespace config {
 
 inline std::shared_ptr<Hypodermic::Container> containerSetup() {
@@ -82,8 +86,13 @@ inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         .as<IRepository<domain::Tournament, std::string>>()
         .singleInstance();
 
-    // MatchRepository sin interfaz: instancia concreta
-    builder.registerInstance(std::make_shared<persistence::MatchRepository>(postgressConnection));
+    // MatchRepository: instancia concreta registrada
+    auto matchRepo = std::make_shared<persistence::MatchRepository>(postgressConnection);
+    builder.registerInstance(matchRepo);
+
+    // --- Match Strategy ---
+    auto matchStrategy = std::make_shared<RoundRobinStrategy>();
+    builder.registerInstance(matchStrategy).as<IMatchStrategy>();
 
     // --- Delegates ---
     builder.registerType<TeamDelegate>()
@@ -98,7 +107,8 @@ inline std::shared_ptr<Hypodermic::Container> containerSetup() {
         .as<ITournamentDelegate>()
         .singleInstance();
 
-    builder.registerType<services::MatchDelegate>()
+    // CORRECCIÓN: MatchDelegate está en namespace global, NO en services
+    builder.registerType<MatchDelegate>()
         .as<IMatchDelegate>()
         .singleInstance();
 

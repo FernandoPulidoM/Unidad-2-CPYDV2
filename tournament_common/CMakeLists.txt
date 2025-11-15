@@ -10,6 +10,7 @@ set(COMMON_SOURCES
         ../tournament_services/tests/mocks/TeamRepositoryMock.h
         ../tournament_services/tests/mocks/GroupRepositoryMock.hpp
         ../tournament_services/tests/mocks/GroupDelegateMock.hpp
+        include/domain/RoundRobinStragety.hpp
 )
 
 include_directories(include)
