@@ -4,12 +4,13 @@
 #include <nlohmann/json.hpp>
 #include <memory>
 
-#include "controller/MatchController.hpp"
-#include "IMatchDelegateMock.hpp"
+#include "../../include/controller/MatchController.hpp"
+#include "../mocks/IMatchDelegateMock.hpp"
 
 using ::testing::_;
 using ::testing::Return;
 using ::testing::Throw;
+using ::testing::Eq;  // ← AGREGAR
 using nlohmann::json;
 
 namespace services {
@@ -45,7 +46,8 @@ TEST_F(MatchControllerTest, GetMatches_ReturnsAllMatches) {
 
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, List("t1", std::nullopt))
+    // ✅ CORRECCIÓN: Usar std::string y std::optional explícito
+    EXPECT_CALL(*mockDelegate, List(std::string("t1"), std::optional<std::string>{}))
         .WillOnce(Return(matches));
 
     auto response = controller->GetMatches(req, "t1");
@@ -64,10 +66,12 @@ TEST_F(MatchControllerTest, GetMatches_FilterPending) {
     crow::request req;
     req.url = "?showMatches=pending";
 
-    EXPECT_CALL(*mockDelegate, List("t1", std::optional<std::string>("pending")))
+    // ✅ CORRECCIÓN: Crear std::optional con valor
+    std::optional<std::string> filter = "pending";
+    EXPECT_CALL(*mockDelegate, List(std::string("t1"), filter))
         .WillOnce(Return(pendingMatches));
 
-    // Nota: necesitas parsear el query param en el test o en el controller
+    // Nota: necesitas parsear el query param en el controller
 }
 
 // Test 3: GET /tournaments/{id}/matches/{matchId}
@@ -76,7 +80,8 @@ TEST_F(MatchControllerTest, GetMatch_Found_ReturnsMatch) {
 
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, Get("t1", "m1"))
+    // ✅ CORRECCIÓN: Usar std::string
+    EXPECT_CALL(*mockDelegate, Get(std::string("t1"), std::string("m1")))
         .WillOnce(Return(match));
 
     auto response = controller->GetMatch(req, "t1", "m1");
@@ -90,7 +95,7 @@ TEST_F(MatchControllerTest, GetMatch_Found_ReturnsMatch) {
 TEST_F(MatchControllerTest, GetMatch_NotFound_Throws404) {
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, Get("t1", "nope"))
+    EXPECT_CALL(*mockDelegate, Get(std::string("t1"), std::string("nope")))
         .WillOnce(Return(std::nullopt));
 
     EXPECT_THROW(controller->GetMatch(req, "t1", "nope"), std::runtime_error);
@@ -98,14 +103,15 @@ TEST_F(MatchControllerTest, GetMatch_NotFound_Throws404) {
 
 // Test 5: PATCH /tournaments/{id}/matches/{matchId} - actualizar score
 TEST_F(MatchControllerTest, PatchScore_Valid_Returns204) {
-    json body = {
-        {"score", {{"home", 3}, {"visitor", 1}}}
-    };
+    // ✅ CORRECCIÓN: Construir JSON paso a paso
+    json body;
+    body["score"]["home"] = 3;
+    body["score"]["visitor"] = 1;
 
     crow::request req;
     req.body = body.dump();
 
-    EXPECT_CALL(*mockDelegate, updateScore("t1", "m1", 3, 1))
+    EXPECT_CALL(*mockDelegate, updateScore(std::string("t1"), std::string("m1"), 3, 1))
         .WillOnce(Return(std::expected<void, std::string>()));
 
     auto code = controller->PatchScore(req, "t1", "m1");
@@ -122,7 +128,9 @@ TEST_F(MatchControllerTest, PatchScore_InvalidJSON_Throws422) {
 
 // Test 7: PATCH - falta campo score
 TEST_F(MatchControllerTest, PatchScore_MissingScore_Throws422) {
-    json body = {{"other", "field"}};
+    json body;
+    body["other"] = "field";
+
     crow::request req;
     req.body = body.dump();
 
@@ -133,7 +141,7 @@ TEST_F(MatchControllerTest, PatchScore_MissingScore_Throws422) {
 TEST_F(MatchControllerTest, GenerateMatches_Success_Returns201) {
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, GenerateMatchesForTournament("t1"))
+    EXPECT_CALL(*mockDelegate, GenerateMatchesForTournament(std::string("t1")))
         .WillOnce(Return(std::expected<void, std::string>()));
 
     auto code = controller->GenerateMatches(req, "t1");
@@ -144,7 +152,7 @@ TEST_F(MatchControllerTest, GenerateMatches_Success_Returns201) {
 TEST_F(MatchControllerTest, GenerateMatches_Fails_Throws500) {
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, GenerateMatchesForTournament("t1"))
+    EXPECT_CALL(*mockDelegate, GenerateMatchesForTournament(std::string("t1")))
         .WillOnce(Return(std::unexpected(std::string("No groups found"))));
 
     EXPECT_THROW(controller->GenerateMatches(req, "t1"), std::runtime_error);
@@ -152,21 +160,39 @@ TEST_F(MatchControllerTest, GenerateMatches_Fails_Throws500) {
 
 // Test 10: GET /tournaments/{id}/status
 TEST_F(MatchControllerTest, GetStatus_ReturnsStatusJSON) {
-    json statusJson = {
-        {"totalMatches", 63},
-        {"currentPhase", "final"},
-        {"rounds", {
-            {"group_stage", {{"total", 48}, {"played", 48}, {"complete", true}}},
-            {"round_of_16", {{"total", 8}, {"played", 8}, {"complete", true}}},
-            {"quarter_finals", {{"total", 4}, {"played", 4}, {"complete", true}}},
-            {"semi_finals", {{"total", 2}, {"played", 2}, {"complete", true}}},
-            {"final", {{"total", 1}, {"played", 0}, {"complete", false}}}
-        }}
-    };
+    // ✅ CORRECCIÓN: Construir JSON paso a paso
+    json statusJson;
+    statusJson["totalMatches"] = 63;
+    statusJson["currentPhase"] = "final";
+
+    // Rounds - group_stage
+    statusJson["rounds"]["group_stage"]["total"] = 48;
+    statusJson["rounds"]["group_stage"]["played"] = 48;
+    statusJson["rounds"]["group_stage"]["complete"] = true;
+
+    // Rounds - round_of_16
+    statusJson["rounds"]["round_of_16"]["total"] = 8;
+    statusJson["rounds"]["round_of_16"]["played"] = 8;
+    statusJson["rounds"]["round_of_16"]["complete"] = true;
+
+    // Rounds - quarter_finals
+    statusJson["rounds"]["quarter_finals"]["total"] = 4;
+    statusJson["rounds"]["quarter_finals"]["played"] = 4;
+    statusJson["rounds"]["quarter_finals"]["complete"] = true;
+
+    // Rounds - semi_finals
+    statusJson["rounds"]["semi_finals"]["total"] = 2;
+    statusJson["rounds"]["semi_finals"]["played"] = 2;
+    statusJson["rounds"]["semi_finals"]["complete"] = true;
+
+    // Rounds - final
+    statusJson["rounds"]["final"]["total"] = 1;
+    statusJson["rounds"]["final"]["played"] = 0;
+    statusJson["rounds"]["final"]["complete"] = false;
 
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, GetTournamentStatus("t1"))
+    EXPECT_CALL(*mockDelegate, GetTournamentStatus(std::string("t1")))
         .WillOnce(Return(statusJson));
 
     auto response = controller->GetTournamentStatus(req, "t1");
@@ -174,13 +200,15 @@ TEST_F(MatchControllerTest, GetStatus_ReturnsStatusJSON) {
 
     EXPECT_EQ(j["totalMatches"], 63);
     EXPECT_EQ(j["currentPhase"], "final");
+    EXPECT_TRUE(j["rounds"]["group_stage"]["complete"]);
+    EXPECT_FALSE(j["rounds"]["final"]["complete"]);
 }
 
 // Test 11: POST /tournaments/{id}/matches/generate-knockout
 TEST_F(MatchControllerTest, GenerateKnockout_Success_Returns201) {
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, GenerateKnockoutPhase("t1"))
+    EXPECT_CALL(*mockDelegate, GenerateKnockoutPhase(std::string("t1")))
         .WillOnce(Return(std::expected<void, std::string>()));
 
     auto code = controller->GenerateKnockoutPhase(req, "t1");
@@ -191,7 +219,7 @@ TEST_F(MatchControllerTest, GenerateKnockout_Success_Returns201) {
 TEST_F(MatchControllerTest, AdvancePhase_Success_Returns201) {
     crow::request req;
 
-    EXPECT_CALL(*mockDelegate, AdvanceKnockoutPhase("t1"))
+    EXPECT_CALL(*mockDelegate, AdvanceKnockoutPhase(std::string("t1")))
         .WillOnce(Return(std::expected<void, std::string>()));
 
     auto code = controller->AdvanceKnockoutPhase(req, "t1");

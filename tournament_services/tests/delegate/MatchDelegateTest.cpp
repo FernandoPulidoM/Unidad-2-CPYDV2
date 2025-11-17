@@ -4,7 +4,7 @@
 #include <string>
 #include <vector>
 
-#include "delegate/MatchDelegate.hpp"
+#include "../../include/delegate/MatchDelegate.hpp"
 #include "domain/Match.hpp"
 #include "domain/Group.hpp"
 #include "MatchRepositoryMock.hpp"
