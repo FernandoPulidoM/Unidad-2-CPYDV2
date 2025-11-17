@@ -27,6 +27,12 @@ namespace services {
         int GenerateMatches(const crow::request& req,
                            const std::string& tournamentId);
 
+        // Agregar a la clase:
+        int GenerateKnockoutPhase(const crow::request& req, const std::string& tournamentId);
+
+        // MatchController.hpp - Agregar:
+        int AdvanceKnockoutPhase(const crow::request& req, const std::string& tournamentId);
+
         // NUEVO: Agregar declaración
         std::string GetTournamentStatus(const crow::request& req,
                                         const std::string& tournamentId);

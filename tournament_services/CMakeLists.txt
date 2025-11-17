@@ -16,6 +16,11 @@ set(SERVICES_SOURCES
         include/delegate/MatchDelegate.hpp
         include/delegate/IMatchDelegate.hpp
         src/delegate/MatchDelegate.cpp
+        tests/mocks/MatchRepositoryMock.hpp
+        tests/mocks/MatchStrategyMock.hpp
+        tests/mocks/IMatchDelegateMock.hpp
+        tests/controller/MatchControllerTest.cpp
+        tests/delegate/MatchDelegateTest.cpp
 )
 
 include(CTest)

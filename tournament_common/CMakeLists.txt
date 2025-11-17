@@ -11,6 +11,12 @@ set(COMMON_SOURCES
         ../tournament_services/tests/mocks/GroupRepositoryMock.hpp
         ../tournament_services/tests/mocks/GroupDelegateMock.hpp
         include/domain/RoundRobinStragety.hpp
+        ../tournament_services/tests/mocks/MatchRepositoryMock.hpp
+        ../tournament_services/tests/mocks/MatchStrategyMock.hpp
+        ../tournament_services/tests/mocks/MatchStrategyMock.hpp
+        ../tournament_services/tests/mocks/IMatchDelegateMock.hpp
+        ../tournament_services/tests/controller/MatchControllerTest.cpp
+        ../tournament_services/tests/delegate/MatchDelegateTest.cpp
 )
 
 include_directories(include)

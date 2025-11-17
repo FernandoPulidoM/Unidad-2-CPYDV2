@@ -23,6 +23,12 @@ set(TEST_SOURCES
         mocks/GroupRepositoryMock.hpp
         ../src/controller/GroupController.cpp
         mocks/GroupDelegateMock.hpp
+        mocks/MatchRepositoryMock.hpp
+        mocks/MatchStrategyMock.hpp
+        mocks/MatchStrategyMock.hpp
+        mocks/IMatchDelegateMock.hpp
+        controller/MatchControllerTest.cpp
+        delegate/MatchDelegateTest.cpp
 
 
 )

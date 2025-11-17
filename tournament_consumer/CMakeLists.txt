@@ -9,6 +9,8 @@ set(CONSUMER_SOURCES
         src/processors/TeamAddedEventProcessor.cpp
         src/processors/ScoreRecordedEventProcessor.cpp
         main.cpp
+        ../tournament_services/tests/mocks/MatchRepositoryMock.hpp
+        ../tournament_services/tests/delegate/MatchDelegateTest.cpp
 )
 
 find_package(libpqxx CONFIG REQUIRED)

@@ -134,6 +134,8 @@ crow::response TeamController::DeleteTeam(const std::string& teamId) const {
     }
 }
 
+
+
 REGISTER_ROUTE(TeamController, getTeam, "/teams/<string>", "GET"_method)
 REGISTER_ROUTE(TeamController, getAllTeams, "/teams", "GET"_method)
 REGISTER_ROUTE(TeamController, SaveTeam, "/teams", "POST"_method)

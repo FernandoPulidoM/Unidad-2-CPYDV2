@@ -104,6 +104,27 @@ std::string MatchController::GetMatch(const crow::request& /*req*/,
     }
     return 201; // Created
 }
+    // Agregar al final antes de los REGISTER_ROUTE:
+
+    int MatchController::GenerateKnockoutPhase(const crow::request& /*req*/,
+                                               const std::string& tournamentId) {
+    auto result = delegate_->GenerateKnockoutPhase(tournamentId);
+    if (!result.has_value()) {
+        throw std::runtime_error("500: " + result.error());
+    }
+    return 201; // Created
+}
+
+
+    // MatchController.cpp - Implementar:
+    int MatchController::AdvanceKnockoutPhase(const crow::request& /*req*/,
+                                              const std::string& tournamentId) {
+    auto result = delegate_->AdvanceKnockoutPhase(tournamentId);
+    if (!result.has_value()) {
+        throw std::runtime_error("500: " + result.error());
+    }
+    return 201;
+}
 
 } // namespace services
 
@@ -124,4 +145,13 @@ REGISTER_ROUTE(MatchController, PatchScore,
     // Registrar ruta
  REGISTER_ROUTE(MatchController, GetTournamentStatus,
                 "/tournaments/<string>/status", "GET"_method)
+
+
+    // Y registrar la ruta:
+    REGISTER_ROUTE(MatchController, GenerateKnockoutPhase,
+                   "/tournaments/<string>/matches/generate-knockout", "POST"_method)
+
+    // Registrar ruta:
+REGISTER_ROUTE(MatchController, AdvanceKnockoutPhase,
+               "/tournaments/<string>/matches/advance", "POST"_method)
 } // namespace services

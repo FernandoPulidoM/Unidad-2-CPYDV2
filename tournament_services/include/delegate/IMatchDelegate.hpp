@@ -4,11 +4,12 @@
 #include <vector>
 #include <expected>
 #include "domain/Match.hpp"
+#include <nlohmann/json.hpp>
 
-// Estructura TeamStanding FUERA de la interfaz (namespace global o domain)
 struct TeamStanding {
     std::string teamId;
     std::string teamName;
+    std::string groupId;  // ← AGREGAR para tracking
     int played = 0;
     int won = 0;
     int drawn = 0;
@@ -16,10 +17,9 @@ struct TeamStanding {
     int goalsFor = 0;
     int goalsAgainst = 0;
     int goalDifference = 0;
-    int points = 0;  // Victoria=3, Empate=1, Derrota=0
+    int points = 0;
 };
 
-// Interfaz sin namespace (coincide con como la usa MatchController)
 struct IMatchDelegate {
     virtual ~IMatchDelegate() = default;
 
@@ -42,4 +42,11 @@ struct IMatchDelegate {
 
     virtual std::expected<nlohmann::json, std::string>
     GetTournamentStatus(const std::string& tournamentId) = 0;
+
+    virtual std::expected<void, std::string>
+    GenerateKnockoutPhase(const std::string& tournamentId) = 0;
+
+    // NUEVO: Generar siguiente fase automáticamente
+    virtual std::expected<void, std::string>
+    AdvanceKnockoutPhase(const std::string& tournamentId) = 0;
 };
