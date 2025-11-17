@@ -13,9 +13,9 @@
 #include "IGroupDelegate.hpp"
 
 // Dominios
-#include "domain/Group.hpp"
-#include "domain/Team.hpp"
-#include "domain/Tournament.hpp"
+#include "../../../tournament_common/include/domain/Group.hpp"
+#include "../../../tournament_common/include/domain/Team.hpp"
+#include "../../../tournament_common/include/domain/Tournament.hpp"
 
 // Repos (interfaces y defs)
 #include "persistence/repository/IRepository.hpp"
@@ -51,6 +51,11 @@ public:
 
     std::expected<void, std::string>
     UpdateTeams(const std::string_view& tournamentId, const std::string_view& groupId, const std::vector<domain::Team>& teams) override;
+
+    // NUEVO: Implementar AddTeamToGroup
+    std::expected<void, std::string>
+    AddTeamToGroup(const std::string_view& tournamentId, const std::string_view& groupId,
+                   const std::string_view& teamId) override;
 };
 
 // ===== Implementacion inline =====
@@ -157,19 +162,56 @@ GroupDelegate::UpdateTeams(const std::string_view& tournamentId, const std::stri
 
     for (const auto& team : teams) {
         if (const auto groupTeams = groupRepository->FindByTournamentIdAndTeamId(tournamentId, team.Id)) {
-            return std::unexpected(std::format("Team {} already exist", team.Id));
+            return std::unexpected("Team {} already exist" + team.Id);
         }
     }
 
     for (const auto& team : teams) {
         const auto persistedTeam = teamRepository->ReadById(team.Id);
         if (persistedTeam == nullptr) {
-            return std::unexpected(std::format("Team {} doesn't exist", team.Id));
+            return std::unexpected("Team {} doesn't exist" + team.Id);
         }
         groupRepository->UpdateGroupAddTeam(groupId, persistedTeam);
     }
 
     return {};
 }
+
+
+// NUEVO: Implementación de AddTeamToGroup
+inline std::expected<void, std::string>
+GroupDelegate::AddTeamToGroup(const std::string_view& tournamentId, const std::string_view& groupId,
+                              const std::string_view& teamId) {
+    // Verificar que el grupo existe
+    const auto group = groupRepository->FindByTournamentIdAndGroupId(tournamentId, groupId);
+    if (group == nullptr) {
+        return std::unexpected("Group doesn't exist");
+    }
+
+    // Verificar capacidad
+    if (group->Teams().size() >= 16) {
+        return std::unexpected("Group at max capacity");
+    }
+
+    // Verificar que el equipo no esté ya en un grupo
+    if (const auto existingGroup = groupRepository->FindByTournamentIdAndTeamId(tournamentId, std::string(teamId))) {
+        return std::unexpected("Team {} already in a group" +  std::string(teamId));
+    }
+
+    // Verificar que el equipo existe
+    const auto team = teamRepository->ReadById(teamId);
+    if (team == nullptr) {
+        return std::unexpected("Team {} doesn't exist" +  std::string(teamId));
+    }
+
+    // Agregar equipo al grupo
+    try {
+        groupRepository->UpdateGroupAddTeam(groupId, team);
+        return {};
+    } catch (const std::exception& e) {
+        return std::unexpected(std::string("Error adding team to group: ") + e.what());
+    }
+}
+
 
 #endif /* SERVICE_GROUP_DELEGATE_HPP */

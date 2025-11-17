@@ -9,10 +9,10 @@
 #include <string_view>
 #include <vector>
 
-#include "delegate/GroupDelegate.hpp"
-#include "mocks/GroupRepositoryMock.hpp"
-#include "mocks/TournamentRepositoryMock.h"
-#include "mocks/TeamRepositoryMock.h"
+#include "../../include/delegate/GroupDelegate.hpp"
+#include "../mocks/GroupRepositoryMock.hpp"
+#include "../mocks/TournamentRepositoryMock.hpp"
+#include "../mocks/TeamRepositoryMock.h"
 
 #include "domain/Group.hpp"
 #include "domain/Team.hpp"

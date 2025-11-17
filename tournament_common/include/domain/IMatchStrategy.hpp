@@ -8,8 +8,8 @@
 #include <vector>
 #include <string>
 #include <expected>
-#include "domain/Match.hpp"
-#include "domain/Group.hpp"
+#include "Match.hpp"
+#include "Group.hpp"
 
 class IMatchStrategy {
 public:

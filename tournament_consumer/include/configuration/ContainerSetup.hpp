@@ -7,6 +7,9 @@
 #include "persistence/repository/TeamRepository.hpp"
 #include "processors/TeamAddedEventProcessor.hpp"
 #include "processors/ScoreRecordedEventProcessor.hpp"
+#include "persistence/repository/IMatchRepository.hpp"  // ← AGREGAR
+#include "persistence/repository/MatchRepository.hpp"
+
 
 namespace config {
 
@@ -26,6 +29,10 @@ namespace config {
 
         builder.registerType<consumers::ScoreRecordedEventProcessor>()
                .singleInstance();
+
+           builder.registerType<persistence::MatchRepository>()
+    .as<persistence::IMatchRepository>()  // ← Registrar como interfaz
+    .singleInstance();
 
         return builder.build();
     }

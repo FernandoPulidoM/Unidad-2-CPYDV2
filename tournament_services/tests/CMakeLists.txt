@@ -29,6 +29,8 @@ set(TEST_SOURCES
         mocks/IMatchDelegateMock.hpp
         controller/MatchControllerTest.cpp
         delegate/MatchDelegateTest.cpp
+        delegate/GroupDelegateTest.cpp
+        delegate/GroupDelegateTest.cpp
 
 
 )

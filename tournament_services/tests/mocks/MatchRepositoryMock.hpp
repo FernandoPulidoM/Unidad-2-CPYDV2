@@ -7,14 +7,14 @@
 #include <expected>
 #include <nlohmann/json.hpp>
 
-#include "persistence/repository/MatchRepository.hpp"
-#include "domain/Match.hpp"
+#include "../../../tournament_common/include/persistence/repository/IMatchRepository.hpp"
+#include "../../../tournament_common/include/persistence/repository/MatchRepository.hpp"
+#include "../../../tournament_common/include/domain/Match.hpp"
 
 namespace persistence {
 
-    class MockMatchRepository : public MatchRepository {
+    class MockMatchRepository : public IMatchRepository {  // ← HEREDAR DE INTERFAZ
     public:
-        MockMatchRepository() : MatchRepository(nullptr) {}
 
         MOCK_METHOD(std::vector<domain::Match>,
                     ListByTournament,
@@ -45,6 +45,7 @@ namespace persistence {
                     CreateBulk,
                     (const std::vector<nlohmann::json>&),
                     (override));
+
     };
 
 } // namespace persistence

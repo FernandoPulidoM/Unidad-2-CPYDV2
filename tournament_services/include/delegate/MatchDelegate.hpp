@@ -7,27 +7,27 @@
 #include <map>
 #include <algorithm>
 
-#include "delegate/IMatchDelegate.hpp"
-#include "domain/IMatchStrategy.hpp"
-#include "domain/Match.hpp"
-#include "persistence/repository/MatchRepository.hpp"
-#include "persistence/repository/GroupRepository.hpp"
+#include "IMatchDelegate.hpp"
+#include "../../../tournament_common/include/domain/IMatchStrategy.hpp"
+#include "../../../tournament_common/include/domain/Match.hpp"
+#include "../../../tournament_common/include/persistence/repository/MatchRepository.hpp"
+#include "../../../tournament_common/include/persistence/repository/GroupRepository.hpp"
 #include <nlohmann/json.hpp>
 
 class MatchDelegate : public IMatchDelegate {
-    std::shared_ptr<persistence::MatchRepository> matchRepo_;
+    std::shared_ptr<persistence::IMatchRepository> matchRepo_;  // ← Cambiar tipo
     std::shared_ptr<IGroupRepository> groupRepo_;
     std::shared_ptr<IMatchStrategy> strategy_;
 
 public:
-    MatchDelegate(std::shared_ptr<persistence::MatchRepository> matchRepo,
+    MatchDelegate(std::shared_ptr<persistence::IMatchRepository> matchRepo,  // ← Cambiar tipo
                   std::shared_ptr<IGroupRepository> groupRepo,
                   std::shared_ptr<IMatchStrategy> strategy)
         : matchRepo_(std::move(matchRepo)),
           groupRepo_(std::move(groupRepo)),
           strategy_(std::move(strategy)) {}
 
-    // ... (mantener métodos existentes: List, Get, updateScore) ...
+    // ... resto del código igual
 
     std::vector<domain::Match>
     List(const std::string& tournamentId,

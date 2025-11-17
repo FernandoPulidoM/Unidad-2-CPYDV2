@@ -4,7 +4,7 @@
 #include <optional>
 #include <nlohmann/json.hpp>
 #include <crow.h>
-#include "delegate/IMatchDelegate.hpp"
+#include "../delegate/IMatchDelegate.hpp"
 
 namespace services {
 

@@ -1,6 +1,7 @@
 #pragma once
 #include <gmock/gmock.h>
-#include "domain/IMatchStrategy.hpp"
+
+#include "../../../tournament_common/include/domain/IMatchStrategy.hpp"
 
 class MockMatchStrategy : public IMatchStrategy {
 public:

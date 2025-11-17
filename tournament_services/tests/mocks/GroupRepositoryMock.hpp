@@ -5,9 +5,9 @@
 #include <string_view>
 #include <vector>
 
-#include "persistence/repository/IGroupRepository.hpp"
-#include "domain/Group.hpp"
-#include "domain/Team.hpp"
+#include "../../../tournament_common/include/persistence/repository/IGroupRepository.hpp"
+#include "../../../tournament_common/include/domain/Group.hpp"
+#include "../../../tournament_common/include/domain/Team.hpp"
 
 // Mock que respeta exactamente las firmas usadas en GroupRepository.cpp
 class GroupRepositoryMock : public IGroupRepository {

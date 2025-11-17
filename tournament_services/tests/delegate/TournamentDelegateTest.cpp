@@ -4,15 +4,15 @@
 #include <string>
 #include <vector>
 
-#include "delegate/TournamentDelegate.hpp"
-#include "domain/Tournament.hpp"
-#include "persistence/repository/IRepository.hpp"
+#include "../../include/delegate/TournamentDelegate.hpp"
+#include "../../../tournament_common/include/domain/Tournament.hpp"
+#include "../../../tournament_common/include/persistence/repository/IRepository.hpp"
 
 // Mock del repositorio (el que ya tienes en tests/mocks)
-#include "TournamentRepositoryMock.hpp"
+#include "../mocks/TournamentRepositoryMock.hpp"
 
 // ⚠️ Importante: mockeamos la CLASE CONCRETA que usa el delegate:
-#include "cms/QueueMessageProducer.hpp"
+#include "../../include/cms/QueueMessageProducer.hpp"
 
 using ::testing::_;
 using ::testing::Return;
@@ -36,12 +36,12 @@ public:
 
 class TournamentDelegateTest : public ::testing::Test {
 protected:
-    std::shared_ptr<MockTournamentRepository> repo;
+    std::shared_ptr<TournamentRepositoryMock> repo;
     std::shared_ptr<MockQueueMessageProducer> mockProducer; // para EXPECT_CALL
     std::shared_ptr<TournamentDelegate>       delegate;
 
     void SetUp() override {
-        repo         = std::make_shared<MockTournamentRepository>();
+        repo         = std::make_shared<TournamentRepositoryMock>();
         mockProducer = std::make_shared<MockQueueMessageProducer>();
         // Se convierte implícitamente a std::shared_ptr<QueueMessageProducer>
         delegate     = std::make_shared<TournamentDelegate>(repo, mockProducer);

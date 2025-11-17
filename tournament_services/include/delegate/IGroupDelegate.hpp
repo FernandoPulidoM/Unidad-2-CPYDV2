@@ -6,7 +6,7 @@
 #include <vector>
 #include <expected>
 
-#include "domain/Group.hpp"
+#include "../../../tournament_common/include/domain/Group.hpp"
 
 class IGroupDelegate{
 public:
@@ -17,6 +17,10 @@ public:
     virtual std::expected<void, std::string> UpdateGroup(const std::string_view& tournamentId, const domain::Group& group) = 0;
     virtual std::expected<void, std::string> RemoveGroup(const std::string_view& tournamentId, const std::string_view& groupId) = 0;
     virtual std::expected<void, std::string> UpdateTeams(const std::string_view& tournamentId, const std::string_view& groupId, const std::vector<domain::Team>& teams) = 0;
+    // NUEVO: Agregar equipo a grupo
+    virtual std::expected<void, std::string>
+    AddTeamToGroup(const std::string_view& tournamentId, const std::string_view& groupId,
+                   const std::string_view& teamId) = 0;
 };
 
 #endif /* SERVICE_IGROUP_DELEGATE_HPP */

@@ -11,6 +11,7 @@ set(CONSUMER_SOURCES
         main.cpp
         ../tournament_services/tests/mocks/MatchRepositoryMock.hpp
         ../tournament_services/tests/delegate/MatchDelegateTest.cpp
+        ../tournament_common/include/persistence/repository/IMatchRepository.hpp
 )
 
 find_package(libpqxx CONFIG REQUIRED)

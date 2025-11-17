@@ -21,6 +21,9 @@ set(SERVICES_SOURCES
         tests/mocks/IMatchDelegateMock.hpp
         tests/controller/MatchControllerTest.cpp
         tests/delegate/MatchDelegateTest.cpp
+        ../tournament_common/include/persistence/repository/IMatchRepository.hpp
+        tests/delegate/GroupDelegateTest.cpp
+        tests/delegate/GroupDelegateTest.cpp
 )
 
 include(CTest)

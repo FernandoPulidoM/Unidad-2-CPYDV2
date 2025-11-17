@@ -4,11 +4,11 @@
 #include <string>
 #include <vector>
 
-#include "persistence/repository/IRepository.hpp"
-#include "domain/Tournament.hpp"
+#include "../../../tournament_common/include/persistence/repository/IRepository.hpp"
+#include "../../../tournament_common/include/domain/Tournament.hpp"
 
 // Mock de repositorio directamente de IRepository (evita ctor de TournamentRepository)
-class MockTournamentRepository : public IRepository<domain::Tournament, std::string> {
+class TournamentRepositoryMock : public IRepository<domain::Tournament, std::string> {
 public:
     MOCK_METHOD(std::string, Create, (const domain::Tournament&), (override));
     MOCK_METHOD(std::vector<std::shared_ptr<domain::Tournament>>, ReadAll, (), (override));

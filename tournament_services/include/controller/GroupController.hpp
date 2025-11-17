@@ -5,7 +5,7 @@
 #include <string>
 #include <memory>
 #include <crow.h>
-#include "delegate/IGroupDelegate.hpp"
+#include "../delegate/IGroupDelegate.hpp"
 
 class GroupController {
     std::shared_ptr<IGroupDelegate> groupDelegate;

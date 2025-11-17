@@ -5,11 +5,11 @@
 #include <string>
 #include <vector>
 
-#include "persistence/repository/TeamRepository.hpp"
-#include "persistence/configuration/IDbConnectionProvider.hpp"
-#include "domain/Team.hpp"
+#include "../../../tournament_common/include/persistence/repository/TeamRepository.hpp"
+#include "../../../tournament_common/include/persistence/configuration/IDbConnectionProvider.hpp"
+#include "../../../tournament_common/include/domain/Team.hpp"
 
-class TeamRepositoryMock : public TeamRepository {
+class TeamRepositoryMock : public persistence::TeamRepository {
 public:
     TeamRepositoryMock()
     : TeamRepository(std::shared_ptr<IDbConnectionProvider>{}) {}

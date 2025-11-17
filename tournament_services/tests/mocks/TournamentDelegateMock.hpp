@@ -4,8 +4,8 @@
 #include <string>
 #include <vector>
 
-#include "delegate/ITournamentDelegate.hpp"
-#include "domain/Tournament.hpp"
+#include "../../../tournament_services/include/delegate/ITournamentDelegate.hpp"
+#include "../../../tournament_common/include/domain/Tournament.hpp"
 
 // Mock alineado a tu interfaz ACTUAL (no usa std::expected)
 class TournamentDelegateMock : public ITournamentDelegate {

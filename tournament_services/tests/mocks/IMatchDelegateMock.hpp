@@ -7,8 +7,8 @@
 #include <expected>
 #include <nlohmann/json.hpp>
 
-#include "delegate/IMatchDelegate.hpp"
-#include "domain/Match.hpp"
+#include "../../../tournament_services/include/delegate/IMatchDelegate.hpp"
+#include "../../../tournament_common/include/domain/Match.hpp"
 
 class MatchDelegateMock : public IMatchDelegate {
 public:
