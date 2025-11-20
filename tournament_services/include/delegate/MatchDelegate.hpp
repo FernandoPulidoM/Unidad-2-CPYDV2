@@ -11,7 +11,8 @@
 #include "../../../tournament_common/include/domain/IMatchStrategy.hpp"
 #include "../../../tournament_common/include/domain/Match.hpp"
 #include "../../../tournament_common/include/persistence/repository/MatchRepository.hpp"
-#include "../../../tournament_common/include/persistence/repository/GroupRepository.hpp"
+#include "../../../tournament_common/include/persistence/repository/IGroupRepository.hpp"
+
 #include <nlohmann/json.hpp>
 
 class MatchDelegate : public IMatchDelegate {

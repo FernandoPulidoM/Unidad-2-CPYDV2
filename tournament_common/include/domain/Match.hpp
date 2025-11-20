@@ -15,8 +15,8 @@ namespace domain {
         std::string tournamentId;
         std::string homeTeamId;
         std::string awayTeamId;
-        std::string round;   // "regular" | "elimination"
-        std::string status;  // "pending" | "played"
+        std::string round;   // group_stage | round_of_16 | quarter_finals | semi_finals | final
+        std::string status;  // pending | played
         std::optional<Score> score;
 
         static Match fromJson(const nlohmann::json& j) {
@@ -37,7 +37,9 @@ namespace domain {
             return m;
         }
 
-        // <<<<<<<<<<<<<<<<<<<<<<<< NUEVO >>>>>>>>>>>>>>>>>>>>>>>>
+        // =======================
+        // 🔥 NECESARIO POR TUS TESTS
+        // =======================
         nlohmann::json ToJson() const {
             nlohmann::json j;
             j["id"] = id;
@@ -58,8 +60,6 @@ namespace domain {
 
             return j;
         }
-        // <<<<<<<<<<<<<<<<<<<<<<<< FIN >>>>>>>>>>>>>>>>>>>>>>>>
-
     };
 
 } // namespace domain

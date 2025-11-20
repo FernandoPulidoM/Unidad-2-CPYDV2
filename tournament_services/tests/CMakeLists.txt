@@ -43,7 +43,6 @@ add_executable(tournament_tests_runner
 
         ../src/delegate/TournamentDelegate.cpp
         ../src/delegate/TeamDelegate.cpp
-        ../src/delegate/MatchDelegate.cpp
 )
 
 target_link_libraries(tournament_tests_runner PRIVATE
