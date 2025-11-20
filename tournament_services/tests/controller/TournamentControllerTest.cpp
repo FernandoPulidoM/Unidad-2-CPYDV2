@@ -8,7 +8,8 @@
 
 #include "controller/TournamentController.hpp"
 // usamos el mock de delegate que ya pusiste en tests/mocks
-#include "TournamentDelegateMock.hpp"
+#include "../mocks/TournamentDelegateMock.hpp"
+#include "../mocks/TournamentRepositoryMock.hpp"
 #include "domain/Tournament.hpp"
 
 using ::testing::_;

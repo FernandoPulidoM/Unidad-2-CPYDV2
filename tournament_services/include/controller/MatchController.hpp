@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include <string>
 #include <optional>
@@ -10,8 +11,8 @@ namespace services {
 
     class MatchController {
     public:
-        explicit MatchController(std::shared_ptr<IMatchDelegate> delegate)
-            : delegate_(std::move(delegate)) {}
+        // Solo declaracion, implementacion en el .cpp para evitar doble definicion
+        explicit MatchController(std::shared_ptr<IMatchDelegate> delegate);
 
         std::string GetMatches(const crow::request& req,
                                const std::string& tournamentId);
@@ -25,15 +26,17 @@ namespace services {
                        const std::string& matchId);
 
         int GenerateMatches(const crow::request& req,
-                           const std::string& tournamentId);
+                            const std::string& tournamentId);
 
-        // Agregar a la clase:
-        int GenerateKnockoutPhase(const crow::request& req, const std::string& tournamentId);
+        // Generar fase de eliminacion
+        int GenerateKnockoutPhase(const crow::request& req,
+                                  const std::string& tournamentId);
 
-        // MatchController.hpp - Agregar:
-        int AdvanceKnockoutPhase(const crow::request& req, const std::string& tournamentId);
+        // Avanzar fase de eliminacion
+        int AdvanceKnockoutPhase(const crow::request& req,
+                                 const std::string& tournamentId);
 
-        // NUEVO: Agregar declaración
+        // Estado general del torneo (matches)
         std::string GetTournamentStatus(const crow::request& req,
                                         const std::string& tournamentId);
 

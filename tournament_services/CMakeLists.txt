@@ -2,28 +2,26 @@ project(tournament_services)
 
 set(CMAKE_CXX_STANDARD 23)
 
-# Agregamos MatchDelegate y sus headers a la lista
+# SOLO fuentes de la aplicacion (no tests, no mocks)
 set(SERVICES_SOURCES
+        # Delegates
         src/delegate/TeamDelegate.cpp
         src/delegate/TournamentDelegate.cpp
         src/delegate/MatchDelegate.cpp
+
+        # Controllers
         src/controller/TournamentController.cpp
         src/controller/TeamController.cpp
         src/controller/GroupController.cpp
         src/controller/MatchController.cpp
+
+        # Repositorios propios de services
         src/delegate/TournamentRepository.cpp
         include/persistence/TournamentRepository.hpp
+
+        # Headers de MatchDelegate
         include/delegate/MatchDelegate.hpp
         include/delegate/IMatchDelegate.hpp
-        src/delegate/MatchDelegate.cpp
-        tests/mocks/MatchRepositoryMock.hpp
-        tests/mocks/MatchStrategyMock.hpp
-        tests/mocks/IMatchDelegateMock.hpp
-        tests/controller/MatchControllerTest.cpp
-        tests/delegate/MatchDelegateTest.cpp
-        ../tournament_common/include/persistence/repository/IMatchRepository.hpp
-        tests/delegate/GroupDelegateTest.cpp
-        tests/delegate/GroupDelegateTest.cpp
 )
 
 include(CTest)
@@ -34,6 +32,7 @@ find_package(libpqxx CONFIG REQUIRED)
 find_path(HYPODERMIC_INCLUDE_DIRS "Hypodermic/ActivatedRegistrationInfo.h")
 find_package(nlohmann_json CONFIG REQUIRED)
 
+# Los tests viven en el subdirectorio tests
 add_subdirectory(tests)
 
 include_directories(include)

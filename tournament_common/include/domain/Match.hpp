@@ -36,6 +36,30 @@ namespace domain {
             }
             return m;
         }
+
+        // <<<<<<<<<<<<<<<<<<<<<<<< NUEVO >>>>>>>>>>>>>>>>>>>>>>>>
+        nlohmann::json ToJson() const {
+            nlohmann::json j;
+            j["id"] = id;
+            j["tournamentId"] = tournamentId;
+            j["homeTeamId"] = homeTeamId;
+            j["awayTeamId"] = awayTeamId;
+            j["round"] = round;
+            j["status"] = status;
+
+            if (score.has_value()) {
+                j["score"] = {
+                    {"home", score->home},
+                    {"visitor", score->visitor}
+                };
+            } else {
+                j["score"] = nullptr;
+            }
+
+            return j;
+        }
+        // <<<<<<<<<<<<<<<<<<<<<<<< FIN >>>>>>>>>>>>>>>>>>>>>>>>
+
     };
 
 } // namespace domain

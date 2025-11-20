@@ -1,66 +1,64 @@
-cmake_minimum_required(VERSION 3.20)
+project(tournament_services_tests)
 
-project(tournament_tests CXX)
+set(CMAKE_CXX_STANDARD 23)
+
 enable_testing()
 
-# ---- SOLO tests de tournaments por ahora ----
-set(TEST_SOURCES
+find_package(GTest CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(Crow CONFIG REQUIRED)
+find_package(libpqxx CONFIG REQUIRED)
+
+include_directories(
+        ../include              # headers de controllers / delegates
+        ../../tournament_common/include
+)
+
+# Ejecutable de pruebas
+add_executable(tournament_tests_runner
+        # Tests de controllers
         controller/TournamentControllerTest.cpp
-        delegate/TournamentDelegateTest.cpp
-
         controller/TeamControllerTest.cpp
-        delegate/TeamDelegateTest.cpp
-
         controller/GroupControllerTest.cpp
+        controller/MatchControllerTest.cpp
 
-        # fuentes de producción necesarias por estos tests
-        ../src/controller/TournamentController.cpp
-        ../src/delegate/TournamentDelegate.cpp
-        ../src/controller/TeamController.cpp
-        ../src/delegate/TeamDelegate.cpp
-        mocks/TeamDelegateMock.hpp
+        # Tests de delegates
+        delegate/TournamentDelegateTest.cpp
+        delegate/TeamDelegateTest.cpp
+        delegate/GroupDelegateTest.cpp
+        delegate/MatchDelegateTest.cpp
+
+        # Mocks
         mocks/TeamRepositoryMock.h
-        mocks/GroupRepositoryMock.hpp
-        ../src/controller/GroupController.cpp
         mocks/GroupDelegateMock.hpp
         mocks/MatchRepositoryMock.hpp
         mocks/MatchStrategyMock.hpp
-        mocks/MatchStrategyMock.hpp
         mocks/IMatchDelegateMock.hpp
-        controller/MatchControllerTest.cpp
-        delegate/MatchDelegateTest.cpp
-        delegate/GroupDelegateTest.cpp
-        delegate/GroupDelegateTest.cpp
 
+        # FUENTES REALES QUE IMPLEMENTAN LOS METODOS LLAMADOS EN LOS TESTS
+        ../src/controller/TournamentController.cpp
+        ../src/controller/TeamController.cpp
+        ../src/controller/GroupController.cpp
+        ../src/controller/MatchController.cpp
 
+        ../src/delegate/TournamentDelegate.cpp
+        ../src/delegate/TeamDelegate.cpp
+        ../src/delegate/MatchDelegate.cpp
 )
 
-# Ejecutable de tests
-add_executable(${PROJECT_NAME}_runner ${TEST_SOURCES})
-
-# Includes que necesitan los tests
-target_include_directories(${PROJECT_NAME}_runner PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/../include
-        ${CMAKE_CURRENT_SOURCE_DIR}/../../tournament_common/include
-        ${CMAKE_CURRENT_SOURCE_DIR}/mocks
-        ${CMAKE_SOURCE_DIR}/tournament_services/include
-
-)
-
-# Dependencias
-find_package(GTest CONFIG REQUIRED)
-find_package(Crow CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-
-target_link_libraries(${PROJECT_NAME}_runner PRIVATE
+target_link_libraries(tournament_tests_runner PRIVATE
         GTest::gtest
         GTest::gtest_main
         GTest::gmock
         GTest::gmock_main
+
         Crow::Crow
+        asio::asio
         nlohmann_json::nlohmann_json
+        libpqxx::pqxx
+        unofficial::activemq-cpp::activemq-cpp
         tournament_common
 )
 
-# Registrar los tests
-add_test(NAME AllTestsInMain COMMAND ${PROJECT_NAME}_runner)
+add_test(NAME tournament_tests_runner
+        COMMAND tournament_tests_runner)
