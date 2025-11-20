@@ -17,7 +17,7 @@ RUN git clone --depth 1 https://github.com/ttimaizumi/tournaments.git /root/tour
 WORKDIR /root/tournaments
 
 RUN cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_MAKE_PROGRAM=ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_TOOLCHAIN_FILE=/opt/vcpkg/scripts/buildsystems/vcpkg.cmake -G Ninja -S /root/tournaments -B /root/tournaments/cmake-build-release
-RUN cmake --build /root/tournaments/cmake-build-release --target tournament_services
+RUN cmake --build /root/tournaments/cmake-build-release --target tournament_consumer
 
 
 # Stage 2: Runtime stage
@@ -38,8 +38,8 @@ WORKDIR /app
 
 # Copy the built binary from builder stage
 # Adjust the path to match your CMake output
-COPY --from=builder /root/tournaments/cmake-build-release/tournament_services/tournament_services /app/
-COPY --from=builder /root/tournaments/cmake-build-release/tournament_services/configuration.json /app/
+COPY --from=builder /root/tournaments/cmake-build-release/tournament_consumer/tournament_consumer /app/
+COPY --from=builder /root/tournaments/cmake-build-release/tournament_consumer/configuration.json /app/
 
 # Copy any required runtime files (config files, assets, etc.)
 # COPY --from=builder /build/config /app/config/
@@ -54,4 +54,4 @@ USER appuser
 EXPOSE 8080
 
 # Start your application
-CMD ["./tournament_services"]
+CMD ["./tournament_consumer"]
