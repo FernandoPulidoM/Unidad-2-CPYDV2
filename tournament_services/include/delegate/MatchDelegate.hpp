@@ -1,4 +1,5 @@
 #pragma once
+
 #include <memory>
 #include <optional>
 #include <vector>
@@ -16,36 +17,46 @@
 #include <nlohmann/json.hpp>
 
 class MatchDelegate : public IMatchDelegate {
-    std::shared_ptr<persistence::IMatchRepository> matchRepo_;  // ← Cambiar tipo
-    std::shared_ptr<IGroupRepository> groupRepo_;
-    std::shared_ptr<IMatchStrategy> strategy_;
+    std::shared_ptr<persistence::IMatchRepository> matchRepo_;
+    std::shared_ptr<IGroupRepository>              groupRepo_;
+    std::shared_ptr<IMatchStrategy>                strategy_;
 
 public:
-    MatchDelegate(std::shared_ptr<persistence::IMatchRepository> matchRepo,  // ← Cambiar tipo
+    MatchDelegate(std::shared_ptr<persistence::IMatchRepository> matchRepo,
                   std::shared_ptr<IGroupRepository> groupRepo,
                   std::shared_ptr<IMatchStrategy> strategy)
         : matchRepo_(std::move(matchRepo)),
           groupRepo_(std::move(groupRepo)),
           strategy_(std::move(strategy)) {}
 
-    // ... resto del código igual
-
+    // -------------------------------------------------------------------------
+    // Listar matches
+    // -------------------------------------------------------------------------
     std::vector<domain::Match>
     List(const std::string& tournamentId,
-         const std::optional<std::string>& filter) override {
+         const std::optional<std::string>& filter) override
+    {
         return matchRepo_->ListByTournament(tournamentId, filter);
     }
 
+    // -------------------------------------------------------------------------
+    // Obtener match
+    // -------------------------------------------------------------------------
     std::optional<domain::Match>
-    Get(const std::string& tournamentId, const std::string& matchId) override {
+    Get(const std::string& tournamentId, const std::string& matchId) override
+    {
         return matchRepo_->GetById(tournamentId, matchId);
     }
 
+    // -------------------------------------------------------------------------
+    // Actualizar score
+    // -------------------------------------------------------------------------
     std::expected<void, std::string>
     updateScore(const std::string& tournamentId,
-                const std::string& matchId, int home, int visitor) override {
-
-        std::cout << "[MatchDelegate] Updating score for match " << matchId << std::endl;
+                const std::string& matchId, int home, int visitor) override
+    {
+        std::cout << "[MatchDelegate] Updating score for match "
+                  << matchId << std::endl;
 
         auto match = matchRepo_->GetById(tournamentId, matchId);
         if (!match.has_value()) {
@@ -61,15 +72,19 @@ public:
         if (result.has_value()) {
             std::cout << "[MatchDelegate] Score updated successfully!" << std::endl;
 
-            // Verificar si se completó una fase y avanzar automáticamente
+            // Intentar avanzar fase automaticamente
             checkAndAdvancePhase(tournamentId, match->round);
         }
 
         return result;
     }
 
+    // -------------------------------------------------------------------------
+    // Generar fase de grupos
+    // -------------------------------------------------------------------------
     std::expected<void, std::string>
-    GenerateMatchesForTournament(const std::string& tournamentId) override {
+    GenerateMatchesForTournament(const std::string& tournamentId) override
+    {
         std::cout << "[MatchDelegate] Generating group stage matches" << std::endl;
 
         auto groups = groupRepo_->FindByTournamentId(tournamentId);
@@ -86,19 +101,23 @@ public:
         for (const auto& match : *matches) {
             nlohmann::json j;
             j["tournamentId"] = match.tournamentId;
-            j["homeTeamId"] = match.homeTeamId;
-            j["awayTeamId"] = match.awayTeamId;
-            j["round"] = match.round;
-            j["status"] = match.status;
-            j["score"] = nullptr;
+            j["homeTeamId"]   = match.homeTeamId;
+            j["awayTeamId"]   = match.awayTeamId;
+            j["round"]        = match.round;
+            j["status"]       = match.status;
+            j["score"]        = nullptr;
             matchJsons.push_back(j);
         }
 
         return matchRepo_->CreateBulk(matchJsons);
     }
 
+    // -------------------------------------------------------------------------
+    // Status del torneo
+    // -------------------------------------------------------------------------
     std::expected<nlohmann::json, std::string>
-    GetTournamentStatus(const std::string& tournamentId) override {
+    GetTournamentStatus(const std::string& tournamentId) override
+    {
         try {
             auto matches = matchRepo_->ListByTournament(tournamentId, std::nullopt);
 
@@ -114,13 +133,13 @@ public:
 
             nlohmann::json status;
             status["totalMatches"] = matches.size();
-            status["rounds"] = nlohmann::json::object();
+            status["rounds"]       = nlohmann::json::object();
 
             for (const auto& [round, total] : totalByRound) {
                 int played = playedByRound[round];
                 status["rounds"][round] = {
-                    {"total", total},
-                    {"played", played},
+                    {"total",   total},
+                    {"played",  played},
                     {"pending", total - played},
                     {"complete", played == total}
                 };
@@ -152,17 +171,37 @@ public:
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Generar octavos
+    // -------------------------------------------------------------------------
     std::expected<void, std::string>
-    GenerateKnockoutPhase(const std::string& tournamentId) override {
+    GenerateKnockoutPhase(const std::string& tournamentId) override
+    {
         std::cout << "[MatchDelegate] Generating Round of 16" << std::endl;
 
-        // Verificar que fase de grupos esté completa
         auto status = GetTournamentStatus(tournamentId);
         if (!status.has_value()) {
             return std::unexpected("Failed to get tournament status");
         }
 
-        if (!(*status)["rounds"]["group_stage"]["complete"].get<bool>()) {
+        // Asegurar que exista info de rounds y de group_stage
+        if (!status->contains("rounds")) {
+            return std::unexpected("Group stage is not complete yet");
+        }
+
+        auto& rounds = (*status)["rounds"];
+        auto  it     = rounds.find("group_stage");
+
+        bool groupStageComplete = false;
+        if (it != rounds.end()) {
+            auto& info = *it;
+            if (info.contains("complete") && info["complete"].is_boolean()) {
+                groupStageComplete = info["complete"].get<bool>();
+            }
+        }
+
+        if (!groupStageComplete) {
+            // Mensaje esperado por el test GenerateKnockout_GroupStageIncomplete_ReturnsError
             return std::unexpected("Group stage is not complete yet");
         }
 
@@ -174,32 +213,34 @@ public:
 
         if (qualified->size() != 16) {
             return std::unexpected("Expected 16 qualified teams, got " +
-                                  std::to_string(qualified->size()));
+                                   std::to_string(qualified->size()));
         }
 
-        // Generar octavos: 1 vs 16, 2 vs 15, 3 vs 14, etc.
+        // Generar octavos: 1 vs 16, 2 vs 15, ...
         std::vector<domain::Match> matches;
         for (size_t i = 0; i < 8; ++i) {
             domain::Match match;
             match.tournamentId = tournamentId;
-            match.homeTeamId = (*qualified)[i].teamId;      // Mejor rankeado
-            match.awayTeamId = (*qualified)[15 - i].teamId; // Peor rankeado
-            match.round = "round_of_16";
-            match.status = "pending";
+            match.homeTeamId   = (*qualified)[i].teamId;      // mejor rank
+            match.awayTeamId   = (*qualified)[15 - i].teamId; // peor rank
+            match.round        = "round_of_16";
+            match.status       = "pending";
             matches.push_back(match);
 
-            std::cout << "  Match " << (i+1) << ": "
-                      << (*qualified)[i].teamName << " (rank " << (i+1) << ")"
-                      << " vs "
-                      << (*qualified)[15-i].teamName << " (rank " << (16-i) << ")"
-                      << std::endl;
+            std::cout << "  Match " << (i + 1) << ": "
+                      << (*qualified)[i].teamName << " vs "
+                      << (*qualified)[15 - i].teamName << std::endl;
         }
 
         return saveMatches(matches);
     }
 
+    // -------------------------------------------------------------------------
+    // Avanzar fase knockout
+    // -------------------------------------------------------------------------
     std::expected<void, std::string>
-    AdvanceKnockoutPhase(const std::string& tournamentId) override {
+    AdvanceKnockoutPhase(const std::string& tournamentId) override
+    {
         auto status = GetTournamentStatus(tournamentId);
         if (!status.has_value()) {
             return std::unexpected("Failed to get status");
@@ -222,15 +263,24 @@ public:
         return std::unexpected("Cannot advance from current phase: " + currentPhase);
     }
 
+    // -------------------------------------------------------------------------
+    // Tabla de posiciones de un grupo
+    // -------------------------------------------------------------------------
     std::expected<std::vector<TeamStanding>, std::string>
-    GetGroupStandings(const std::string& tournamentId, const std::string& groupId) override {
+    GetGroupStandings(const std::string& tournamentId,
+                      const std::string& groupId) override
+    {
         return calculateGroupStandings(tournamentId, groupId);
     }
 
 private:
-    // Calcular tabla de posiciones de un grupo
+    // ---------------------------------------------------------------------
+    // Calcular standings de un grupo
+    // ---------------------------------------------------------------------
     std::expected<std::vector<TeamStanding>, std::string>
-    calculateGroupStandings(const std::string& tournamentId, const std::string& groupId) {
+    calculateGroupStandings(const std::string& tournamentId,
+                            const std::string& groupId)
+    {
         auto allMatches = matchRepo_->ListByTournament(tournamentId, std::nullopt);
 
         auto groups = groupRepo_->FindByTournamentId(tournamentId);
@@ -250,9 +300,9 @@ private:
 
         for (const auto& team : targetGroup->Teams()) {
             TeamStanding ts;
-            ts.teamId = team.Id;
+            ts.teamId   = team.Id;
             ts.teamName = team.Name;
-            ts.groupId = groupId;
+            ts.groupId  = groupId;
             standings[team.Id] = ts;
         }
 
@@ -271,9 +321,9 @@ private:
             homeTeam.played++;
             awayTeam.played++;
 
-            homeTeam.goalsFor += match.score->home;
+            homeTeam.goalsFor     += match.score->home;
             homeTeam.goalsAgainst += match.score->visitor;
-            awayTeam.goalsFor += match.score->visitor;
+            awayTeam.goalsFor     += match.score->visitor;
             awayTeam.goalsAgainst += match.score->home;
 
             if (match.score->home > match.score->visitor) {
@@ -300,18 +350,23 @@ private:
             result.push_back(standing);
         }
 
-        std::sort(result.begin(), result.end(), [](const TeamStanding& a, const TeamStanding& b) {
-            if (a.points != b.points) return a.points > b.points;
-            if (a.goalDifference != b.goalDifference) return a.goalDifference > b.goalDifference;
+        std::sort(result.begin(), result.end(),
+                  [](const TeamStanding& a, const TeamStanding& b) {
+            if (a.points != b.points)         return a.points > b.points;
+            if (a.goalDifference != b.goalDifference)
+                return a.goalDifference > b.goalDifference;
             return a.goalsFor > b.goalsFor;
         });
 
         return result;
     }
 
-    // Obtener los 16 clasificados rankeados del 1 al 16
+    // ---------------------------------------------------------------------
+    // Obtener 16 clasificados, rankeados globalmente
+    // ---------------------------------------------------------------------
     std::expected<std::vector<TeamStanding>, std::string>
-    getRankedQualifiedTeams(const std::string& tournamentId) {
+    getRankedQualifiedTeams(const std::string& tournamentId)
+    {
         auto groups = groupRepo_->FindByTournamentId(tournamentId);
 
         std::vector<TeamStanding> allQualified;
@@ -319,7 +374,9 @@ private:
         for (const auto& group : groups) {
             auto standings = calculateGroupStandings(tournamentId, group->Id());
             if (!standings.has_value() || standings->size() < 2) {
-                return std::unexpected("Failed to get standings for group: " + group->Name());
+                return std::unexpected(
+                    "Failed to get standings for group: " + group->Name()
+                );
             }
 
             // Top 2 de cada grupo
@@ -327,26 +384,31 @@ private:
             allQualified.push_back((*standings)[1]);
         }
 
-        // Ordenar todos los clasificados: primeros lugares, luego segundos lugares
+        // Orden global: puntos, diferencia, goles a favor
         std::sort(allQualified.begin(), allQualified.end(),
-                 [](const TeamStanding& a, const TeamStanding& b) {
-            if (a.points != b.points) return a.points > b.points;
-            if (a.goalDifference != b.goalDifference) return a.goalDifference > b.goalDifference;
+                  [](const TeamStanding& a, const TeamStanding& b) {
+            if (a.points != b.points)         return a.points > b.points;
+            if (a.goalDifference != b.goalDifference)
+                return a.goalDifference > b.goalDifference;
             return a.goalsFor > b.goalsFor;
         });
 
         std::cout << "[MatchDelegate] Qualified teams ranking:" << std::endl;
         for (size_t i = 0; i < allQualified.size(); ++i) {
-            std::cout << "  " << (i+1) << ". " << allQualified[i].teamName
+            std::cout << "  " << (i + 1) << ". " << allQualified[i].teamName
                       << " (" << allQualified[i].points << " pts)" << std::endl;
         }
 
         return allQualified;
     }
 
-    // Obtener ganadores de una fase
+    // ---------------------------------------------------------------------
+    // Obtener ganadores de una ronda knockout
+    // ---------------------------------------------------------------------
     std::expected<std::vector<std::string>, std::string>
-    getWinnersFromRound(const std::string& tournamentId, const std::string& round) {
+    getWinnersFromRound(const std::string& tournamentId,
+                        const std::string& round)
+    {
         auto matches = matchRepo_->ListByTournament(tournamentId, std::nullopt);
 
         std::vector<std::string> winners;
@@ -360,16 +422,21 @@ private:
             } else if (match.score->visitor > match.score->home) {
                 winners.push_back(match.awayTeamId);
             } else {
-                return std::unexpected("Match ended in draw (not supported in knockout): " + match.id);
+                return std::unexpected(
+                    "Match ended in draw (not supported in knockout): " + match.id
+                );
             }
         }
 
         return winners;
     }
 
-    // Generar cuartos de final
+    // ---------------------------------------------------------------------
+    // Generar cuartos
+    // ---------------------------------------------------------------------
     std::expected<void, std::string>
-    generateQuarterFinals(const std::string& tournamentId) {
+    generateQuarterFinals(const std::string& tournamentId)
+    {
         std::cout << "[MatchDelegate] Generating Quarter Finals" << std::endl;
 
         auto winners = getWinnersFromRound(tournamentId, "round_of_16");
@@ -379,26 +446,29 @@ private:
 
         if (winners->size() != 8) {
             return std::unexpected("Expected 8 winners from Round of 16, got " +
-                                  std::to_string(winners->size()));
+                                   std::to_string(winners->size()));
         }
 
         std::vector<domain::Match> matches;
         for (size_t i = 0; i < winners->size(); i += 2) {
             domain::Match match;
             match.tournamentId = tournamentId;
-            match.homeTeamId = (*winners)[i];
-            match.awayTeamId = (*winners)[i + 1];
-            match.round = "quarter_finals";
-            match.status = "pending";
+            match.homeTeamId   = (*winners)[i];
+            match.awayTeamId   = (*winners)[i + 1];
+            match.round        = "quarter_finals";
+            match.status       = "pending";
             matches.push_back(match);
         }
 
         return saveMatches(matches);
     }
 
-    // Generar semifinales
+    // ---------------------------------------------------------------------
+    // Generar semis
+    // ---------------------------------------------------------------------
     std::expected<void, std::string>
-    generateSemiFinals(const std::string& tournamentId) {
+    generateSemiFinals(const std::string& tournamentId)
+    {
         std::cout << "[MatchDelegate] Generating Semi Finals" << std::endl;
 
         auto winners = getWinnersFromRound(tournamentId, "quarter_finals");
@@ -414,19 +484,22 @@ private:
         for (size_t i = 0; i < winners->size(); i += 2) {
             domain::Match match;
             match.tournamentId = tournamentId;
-            match.homeTeamId = (*winners)[i];
-            match.awayTeamId = (*winners)[i + 1];
-            match.round = "semi_finals";
-            match.status = "pending";
+            match.homeTeamId   = (*winners)[i];
+            match.awayTeamId   = (*winners)[i + 1];
+            match.round        = "semi_finals";
+            match.status       = "pending";
             matches.push_back(match);
         }
 
         return saveMatches(matches);
     }
 
+    // ---------------------------------------------------------------------
     // Generar final
+    // ---------------------------------------------------------------------
     std::expected<void, std::string>
-    generateFinal(const std::string& tournamentId) {
+    generateFinal(const std::string& tournamentId)
+    {
         std::cout << "[MatchDelegate] Generating Final" << std::endl;
 
         auto winners = getWinnersFromRound(tournamentId, "semi_finals");
@@ -440,48 +513,78 @@ private:
 
         domain::Match finalMatch;
         finalMatch.tournamentId = tournamentId;
-        finalMatch.homeTeamId = (*winners)[0];
-        finalMatch.awayTeamId = (*winners)[1];
-        finalMatch.round = "final";
-        finalMatch.status = "pending";
+        finalMatch.homeTeamId   = (*winners)[0];
+        finalMatch.awayTeamId   = (*winners)[1];
+        finalMatch.round        = "final";
+        finalMatch.status       = "pending";
 
         return saveMatches({finalMatch});
     }
 
+    // ---------------------------------------------------------------------
     // Guardar partidos en la BD
+    // ---------------------------------------------------------------------
     std::expected<void, std::string>
-    saveMatches(const std::vector<domain::Match>& matches) {
+    saveMatches(const std::vector<domain::Match>& matches)
+    {
         std::vector<nlohmann::json> matchJsons;
         for (const auto& match : matches) {
             nlohmann::json j;
             j["tournamentId"] = match.tournamentId;
-            j["homeTeamId"] = match.homeTeamId;
-            j["awayTeamId"] = match.awayTeamId;
-            j["round"] = match.round;
-            j["status"] = match.status;
-            j["score"] = nullptr;
+            j["homeTeamId"]   = match.homeTeamId;
+            j["awayTeamId"]   = match.awayTeamId;
+            j["round"]        = match.round;
+            j["status"]       = match.status;
+            j["score"]        = nullptr;
             matchJsons.push_back(j);
         }
 
         return matchRepo_->CreateBulk(matchJsons);
     }
 
-    // Verificar y avanzar fase automáticamente
-    void checkAndAdvancePhase(const std::string& tournamentId, const std::string& completedRound) {
+    // ---------------------------------------------------------------------
+    // Verificar y avanzar fase automaticamente (robusto)
+    // ---------------------------------------------------------------------
+    void checkAndAdvancePhase(const std::string& tournamentId,
+                              const std::string& completedRound)
+    {
         auto status = GetTournamentStatus(tournamentId);
-        if (!status.has_value()) return;
+        if (!status.has_value()) {
+            return;
+        }
 
-        // Solo avanzar si la fase actual está completa
-        if ((*status)["rounds"][completedRound]["complete"].get<bool>()) {
-            std::cout << "[MatchDelegate] Phase " << completedRound
-                      << " complete! Auto-advancing..." << std::endl;
+        if (!status->contains("rounds")) {
+            return;
+        }
 
-            auto result = AdvanceKnockoutPhase(tournamentId);
-            if (result.has_value()) {
-                std::cout << "[MatchDelegate] Next phase generated successfully!" << std::endl;
-            } else {
-                std::cerr << "[MatchDelegate] Failed to advance: " << result.error() << std::endl;
-            }
+        auto& rounds = (*status)["rounds"];
+        auto  it     = rounds.find(completedRound);
+        if (it == rounds.end()) {
+            // No hay datos para esa ronda, no hacemos nada
+            return;
+        }
+
+        auto& roundInfo = *it;
+        bool isComplete = false;
+
+        if (roundInfo.contains("complete") && roundInfo["complete"].is_boolean()) {
+            isComplete = roundInfo["complete"].get<bool>();
+        }
+
+        if (!isComplete) {
+            return;
+        }
+
+        std::cout << "[MatchDelegate] Phase " << completedRound
+                  << " complete! Auto-advancing..." << std::endl;
+
+        auto result = AdvanceKnockoutPhase(tournamentId);
+        if (result.has_value()) {
+            std::cout << "[MatchDelegate] Next phase generated successfully!"
+                      << std::endl;
+        } else {
+            std::cerr << "[MatchDelegate] Failed to advance: "
+                      << result.error() << std::endl;
         }
     }
 };

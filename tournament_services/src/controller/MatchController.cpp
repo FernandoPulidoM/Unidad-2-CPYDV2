@@ -14,10 +14,19 @@ std::string MatchController::GetMatches(
 {
     std::optional<std::string> filter = std::nullopt;
 
-    // Los tests usan ?filter=pending
-    const char* raw = req.url_params.get("filter");
-    if (raw != nullptr) {
-        filter = std::string(raw);
+    // Soportar los diferentes nombres de query param:
+    // ?showMatches=played|pending (contrato del PDF)
+    // y tambien ?filter= o ?status= por compatibilidad
+    const char* rawShowMatches = req.url_params.get("showMatches");
+    const char* rawFilter      = req.url_params.get("filter");
+    const char* rawStatus      = req.url_params.get("status");
+
+    if (rawShowMatches != nullptr) {
+        filter = std::string(rawShowMatches);      // "played" o "pending"
+    } else if (rawFilter != nullptr) {
+        filter = std::string(rawFilter);
+    } else if (rawStatus != nullptr) {
+        filter = std::string(rawStatus);
     }
 
     auto list = delegate_->List(tournamentId, filter);
@@ -99,7 +108,7 @@ int MatchController::PatchScore(
     if (!r.has_value())
         throw std::runtime_error("Score update failed");
 
-    return 204;  // lo que piden los tests
+    return 204;
 }
 
 
@@ -112,7 +121,7 @@ int MatchController::GenerateMatches(
     if (!r.has_value())
         throw std::runtime_error("Generate failed");
 
-    return 201;  // lo que piden los tests
+    return 201;
 }
 
 
@@ -125,7 +134,7 @@ int MatchController::GenerateKnockoutPhase(
     if (!r.has_value())
         throw std::runtime_error("KO generation failed");
 
-    return 201;  // tests piden esto
+    return 201;
 }
 
 
@@ -138,7 +147,7 @@ int MatchController::AdvanceKnockoutPhase(
     if (!r.has_value())
         throw std::runtime_error("Advance failed");
 
-    return 201;  // tests piden esto
+    return 201;
 }
 
 
