@@ -46,7 +46,7 @@ TEST_F(MatchControllerTest, GetMatches_ReturnsAllMatches) {
 
     crow::request req;
 
-    // ✅ CORRECCIÓN: Usar std::string y std::optional explícito
+    // CORRECCIÓN: Usar std::string y std::optional explícito
     EXPECT_CALL(*mockDelegate, List(std::string("t1"), std::optional<std::string>{}))
         .WillOnce(Return(matches));
 

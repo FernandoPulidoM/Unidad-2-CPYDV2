@@ -1,4 +1,5 @@
 #pragma once
+
 #include <gmock/gmock.h>
 #include <memory>
 #include <string>
@@ -14,7 +15,7 @@
  * Mock de IGroupDelegate para pruebas unitarias del GroupController
  * Respeta exactamente las firmas definidas en IGroupDelegate.hpp
  *
- * NOTA: Los tipos de retorno con comas (std::expected) deben estar entre paréntesis extra
+ * NOTA: Los tipos de retorno con comas (std::expected) deben estar entre parentesis extra
  */
 class GroupDelegateMock : public IGroupDelegate {
 public:
@@ -30,7 +31,7 @@ public:
                 (const std::string_view& tournamentId),
                 (override));
 
-    // GetGroup: retorna un grupo específico o error
+    // GetGroup: retorna un grupo especifico o error
     MOCK_METHOD((std::expected<std::shared_ptr<domain::Group>, std::string>),
                 GetGroup,
                 (const std::string_view& tournamentId, const std::string_view& groupId),
@@ -55,4 +56,15 @@ public:
                  const std::string_view& groupId,
                  const std::vector<domain::Team>& teams),
                 (override));
+
+    // AddTeamToGroup: agrega un equipo a un grupo, retorna void o error
+    MOCK_METHOD((std::expected<void, std::string>),
+                AddTeamToGroup,
+                (const std::string_view& tournamentId,
+                 const std::string_view& groupId,
+                 const std::string_view& teamId),
+                (override));
 };
+
+// Alias opcional por si quieres usarlo
+using StrictGroupDelegateMock = ::testing::StrictMock<GroupDelegateMock>;

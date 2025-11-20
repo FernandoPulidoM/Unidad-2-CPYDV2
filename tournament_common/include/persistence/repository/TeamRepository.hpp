@@ -16,7 +16,7 @@
 #include "IRepository.hpp"
 #include "domain/Team.hpp"
 #include "domain/Utilities.hpp"
-s
+
 namespace persistence {
 
     class TeamRepository : public IRepository<domain::Team, std::string_view> {
