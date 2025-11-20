@@ -55,14 +55,15 @@ public:
             auto existing =
                 groupRepository->FindByTournamentIdAndGroupId(tournamentId, g.Id());
             if (existing != nullptr) {
-                return std::unexpected("Group already exists");
+                // Los tests de DuplicateGroup esperan este texto generico
+                return std::unexpected("Failed to create group");
             }
         }
 
         // 3) Maximo de equipos en el grupo (usa MaxTeamsPerGroup)
         const auto maxTeams = tournament->Format().MaxTeamsPerGroup();
         if (static_cast<int>(g.Teams().size()) > maxTeams) {
-            // Mensaje que esperan los tests
+            // Mensaje que esperan los tests de MaxTeamsExceeded
             return std::unexpected("Group at max capacity");
         }
 
@@ -91,12 +92,12 @@ public:
             }
         }
 
-        // 5) Crear el grupo, tratando "" como grupo duplicado
+        // 5) Crear el grupo, tratando "" como error de creacion
         try {
             auto id = groupRepository->Create(g);
             if (id.empty()) {
-                // Casos donde el repo no crea por duplicado
-                return std::unexpected("Group already exists");
+                // El test DuplicateGroup espera EXACTAMENTE este mensaje
+                return std::unexpected("Failed to create group");
             }
             return id;
         } catch (const std::exception& e) {
@@ -286,7 +287,7 @@ public:
             );
         }
 
-        // 4) Capacidad del grupo (aqui ya se llamo ReadById y FindByTournamentIdAndTeamId)
+        // 4) Capacidad del grupo
         if (static_cast<int>(group->Teams().size()) >= maxTeams) {
             return std::unexpected("Group is full");
         }

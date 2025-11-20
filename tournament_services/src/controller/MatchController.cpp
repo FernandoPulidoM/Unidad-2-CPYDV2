@@ -1,5 +1,6 @@
 #include "controller/MatchController.hpp"
 #include <nlohmann/json.hpp>
+#include <sstream>
 
 namespace services {
 
@@ -14,9 +15,7 @@ std::string MatchController::GetMatches(
 {
     std::optional<std::string> filter = std::nullopt;
 
-    // Soportar los diferentes nombres de query param:
-    // ?showMatches=played|pending (contrato del PDF)
-    // y tambien ?filter= o ?status= por compatibilidad
+    // 1) Intentar leer de url_params (modo normal en Crow)
     const char* rawShowMatches = req.url_params.get("showMatches");
     const char* rawFilter      = req.url_params.get("filter");
     const char* rawStatus      = req.url_params.get("status");
@@ -27,6 +26,30 @@ std::string MatchController::GetMatches(
         filter = std::string(rawFilter);
     } else if (rawStatus != nullptr) {
         filter = std::string(rawStatus);
+    }
+
+    // 2) Si en tests no llenaron url_params, hacer fallback a parsear req.url
+    if (!filter.has_value()) {
+        std::string url = req.url;  // ej: "/tournaments/t1/matches?filter=pending"
+        auto pos = url.find('?');
+        if (pos != std::string::npos) {
+            std::string qs = url.substr(pos + 1);  // "filter=pending&x=y"
+            std::stringstream ss(qs);
+            std::string pair;
+
+            while (std::getline(ss, pair, '&')) {
+                auto eq = pair.find('=');
+                if (eq == std::string::npos) continue;
+
+                std::string key = pair.substr(0, eq);
+                std::string val = pair.substr(eq + 1);
+
+                if (key == "showMatches" || key == "filter" || key == "status") {
+                    filter = val;  // ej. "pending"
+                    break;
+                }
+            }
+        }
     }
 
     auto list = delegate_->List(tournamentId, filter);
