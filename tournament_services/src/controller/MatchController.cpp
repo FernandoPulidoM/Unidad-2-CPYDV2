@@ -14,9 +14,10 @@ std::string MatchController::GetMatches(
 {
     std::optional<std::string> filter = std::nullopt;
 
-    // CAMBIO: antes leia "filter", ahora "status"
-    if (req.url_params.get("status")) {
-        filter = std::string(req.url_params.get("status"));
+    // Los tests usan ?filter=pending
+    const char* raw = req.url_params.get("filter");
+    if (raw != nullptr) {
+        filter = std::string(raw);
     }
 
     auto list = delegate_->List(tournamentId, filter);
@@ -24,16 +25,16 @@ std::string MatchController::GetMatches(
     nlohmann::json j = nlohmann::json::array();
     for (auto& m : list) {
         nlohmann::json x;
-        x["id"] = m.id;
+        x["id"]           = m.id;
         x["tournamentId"] = m.tournamentId;
-        x["homeTeamId"] = m.homeTeamId;
-        x["awayTeamId"] = m.awayTeamId;
-        x["round"] = m.round;
-        x["status"] = m.status;
+        x["homeTeamId"]   = m.homeTeamId;
+        x["awayTeamId"]   = m.awayTeamId;
+        x["round"]        = m.round;
+        x["status"]       = m.status;
 
         if (m.score.has_value()) {
             x["score"] = {
-                {"home", m.score->home},
+                {"home",    m.score->home},
                 {"visitor", m.score->visitor}
             };
         } else {
@@ -57,16 +58,16 @@ std::string MatchController::GetMatch(
     }
 
     nlohmann::json x;
-    x["id"] = m->id;
+    x["id"]           = m->id;
     x["tournamentId"] = m->tournamentId;
-    x["homeTeamId"] = m->homeTeamId;
-    x["awayTeamId"] = m->awayTeamId;
-    x["round"] = m->round;
-    x["status"] = m->status;
+    x["homeTeamId"]   = m->homeTeamId;
+    x["awayTeamId"]   = m->awayTeamId;
+    x["round"]        = m->round;
+    x["status"]       = m->status;
 
     if (m->score.has_value()) {
         x["score"] = {
-            {"home", m->score->home},
+            {"home",    m->score->home},
             {"visitor", m->score->visitor}
         };
     } else {
@@ -90,7 +91,7 @@ int MatchController::PatchScore(
     if (!body.contains("score"))
         throw std::runtime_error("Missing score field");
 
-    int home = body["score"].value("home", -999);
+    int home    = body["score"].value("home", -999);
     int visitor = body["score"].value("visitor", -999);
 
     auto r = delegate_->updateScore(tournamentId, matchId, home, visitor);
