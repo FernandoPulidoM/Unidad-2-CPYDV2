@@ -7,15 +7,22 @@ MatchController::MatchController(std::shared_ptr<IMatchDelegate> delegate)
     : delegate_(std::move(delegate)) {}
 
 
+// ---------------------------- GET MATCHES -----------------------------
 std::string MatchController::GetMatches(
-        const crow::request& /*req*/,
+        const crow::request& req,
         const std::string& tournamentId)
 {
-    auto list = delegate_->List(tournamentId, std::nullopt);
+    std::optional<std::string> filter = std::nullopt;
+
+    // CAMBIO: antes leia "filter", ahora "status"
+    if (req.url_params.get("status")) {
+        filter = std::string(req.url_params.get("status"));
+    }
+
+    auto list = delegate_->List(tournamentId, filter);
 
     nlohmann::json j = nlohmann::json::array();
-    for (const auto& m : list)
-    {
+    for (auto& m : list) {
         nlohmann::json x;
         x["id"] = m.id;
         x["tournamentId"] = m.tournamentId;
@@ -32,21 +39,22 @@ std::string MatchController::GetMatches(
         } else {
             x["score"] = nullptr;
         }
-
         j.push_back(x);
     }
     return j.dump();
 }
 
 
+// ---------------------------- GET MATCH -----------------------------
 std::string MatchController::GetMatch(
-        const crow::request& /*req*/,
+        const crow::request&,
         const std::string& tournamentId,
         const std::string& matchId)
 {
     auto m = delegate_->Get(tournamentId, matchId);
-    if (!m.has_value())
-        return "{}";
+    if (!m.has_value()) {
+        throw std::runtime_error("Match not found");
+    }
 
     nlohmann::json x;
     x["id"] = m->id;
@@ -69,61 +77,73 @@ std::string MatchController::GetMatch(
 }
 
 
+// ---------------------------- PATCH SCORE -----------------------------
 int MatchController::PatchScore(
         const crow::request& req,
         const std::string& tournamentId,
         const std::string& matchId)
 {
     auto body = nlohmann::json::parse(req.body, nullptr, false);
-    if (body.is_discarded()) {
-        return 400;
-    }
+    if (body.is_discarded())
+        throw std::runtime_error("Invalid JSON");
 
-    if (!body.contains("score")) {
-        return 400;
-    }
+    if (!body.contains("score"))
+        throw std::runtime_error("Missing score field");
 
-    int home = body["score"].value("home", -1);
-    int visitor = body["score"].value("visitor", -1);
+    int home = body["score"].value("home", -999);
+    int visitor = body["score"].value("visitor", -999);
 
-    auto result = delegate_->updateScore(tournamentId, matchId, home, visitor);
-    if (!result.has_value()) {
-        return 400;
-    }
+    auto r = delegate_->updateScore(tournamentId, matchId, home, visitor);
 
-    return 200;
+    if (!r.has_value())
+        throw std::runtime_error("Score update failed");
+
+    return 204;  // lo que piden los tests
 }
 
 
+// ---------------------------- GENERATE MATCHES -----------------------------
 int MatchController::GenerateMatches(
-        const crow::request& /*req*/,
+        const crow::request&,
         const std::string& tournamentId)
 {
     auto r = delegate_->GenerateMatchesForTournament(tournamentId);
-    return r.has_value() ? 200 : 400;
+    if (!r.has_value())
+        throw std::runtime_error("Generate failed");
+
+    return 201;  // lo que piden los tests
 }
 
 
+// ---------------------------- GENERATE KNOCKOUT -----------------------------
 int MatchController::GenerateKnockoutPhase(
-        const crow::request& /*req*/,
+        const crow::request&,
         const std::string& tournamentId)
 {
     auto r = delegate_->GenerateKnockoutPhase(tournamentId);
-    return r.has_value() ? 200 : 400;
+    if (!r.has_value())
+        throw std::runtime_error("KO generation failed");
+
+    return 201;  // tests piden esto
 }
 
 
+// ---------------------------- ADVANCE PHASE -----------------------------
 int MatchController::AdvanceKnockoutPhase(
-        const crow::request& /*req*/,
+        const crow::request&,
         const std::string& tournamentId)
 {
     auto r = delegate_->AdvanceKnockoutPhase(tournamentId);
-    return r.has_value() ? 200 : 400;
+    if (!r.has_value())
+        throw std::runtime_error("Advance failed");
+
+    return 201;  // tests piden esto
 }
 
 
+// ---------------------------- STATUS -----------------------------
 std::string MatchController::GetTournamentStatus(
-        const crow::request& /*req*/,
+        const crow::request&,
         const std::string& tournamentId)
 {
     auto r = delegate_->GetTournamentStatus(tournamentId);
