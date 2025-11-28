@@ -22,6 +22,7 @@ public:
     [[nodiscard]] crow::response DeleteTournament(const std::string& id) const;
 
     [[nodiscard]] crow::response UpdateTournament(const crow::request& request, const std::string& id) const;
+
 };
 
 
